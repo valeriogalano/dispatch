@@ -1,0 +1,53 @@
+name: Weekly Dev Digest
+
+on:
+  schedule:
+    - cron: "0 18 * * 5"  # Every Friday at 18:00 UTC
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Number of days to look back"
+        required: false
+        default: "7"
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Create virtualenv and install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install requests
+
+      - name: Determine days parameter
+        id: params
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "days=${{ github.event.inputs.days }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "days=7" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run collect.py
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          .venv/bin/python collect.py --days ${{ steps.params.outputs.days }}
+
+      - name: Commit digest file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          git diff --cached --quiet || git commit -m "chore: add weekly digest $(date -u '+%Y-%m-%d')"
+          git push
