@@ -32,8 +32,7 @@ def load_config(path: str) -> list[dict]:
                 continue
             slug = parts[0]
             name = parts[1]
-            tags = [t.strip() for t in parts[2].split(",")] if len(parts) > 2 else []
-            repos.append({"slug": slug, "name": name, "tags": tags})
+            repos.append({"slug": slug, "name": name})
     return repos
 
 
@@ -101,8 +100,7 @@ def build_digest(repos: list[dict], days: int, token: str) -> str:
         if not commits:
             continue
         any_content = True
-        tags = f" `{'` `'.join(repo['tags'])}`" if repo["tags"] else ""
-        lines.append(f"## {repo['name']}{tags}")
+        lines.append(f"## {repo['name']}")
         lines.append(f"<https://github.com/{repo['slug']}/commits>")
         lines.append("")
 

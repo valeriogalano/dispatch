@@ -16,7 +16,7 @@ Every Friday at 18:00 UTC a GitHub Actions workflow runs `collect.py`, which:
 ### 1. Add repos to `config.txt`
 
 ```
-owner/repo-name | Human Readable Name | tag1, tag2
+owner/repo-name | Human Readable Name
 ```
 
 Lines starting with `#` and blank lines are ignored.
