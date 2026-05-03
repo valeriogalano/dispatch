@@ -1,0 +1,35 @@
+# GitHub Digest Configuration
+# Format: owner/repo-name | Human Readable Name
+# Lines starting with # are comments, blank lines are ignored.
+
+# Pensieri in codice
+valeriogalano/pensieriincodice-assets | Pensieri in codice - Assets
+valeriogalano/pensieriincodice-cdn | Pensieri in codice - CDN
+valeriogalano/pensieriincodice-website | Pensieri in codice - Website
+
+# Podcast RSS to social
+valeriogalano/podcast-rss-to-telegram | Podcast RSS to Telegram
+valeriogalano/podcast-rss-to-mastodon | Podcast RSS to Mastodon
+valeriogalano/podcast-rss-to-x | Podcast RSS to X
+valeriogalano/podcast-rss-to-linkedin | Podcast RSS to LinkedIn
+valeriogalano/podcast-quiz-to-telegram | Podcast Quiz to Telegram
+
+# Readwise to social
+valeriogalano/readwise-to-telegram | Readwise to Telegram
+valeriogalano/readwise-to-mastodon | Readwise to Mastodon
+valeriogalano/readwise-to-linkedin | Readwise to LinkedIn
+valeriogalano/readwise-to-hugo | Readwise to Hugo
+
+# Podcast tools
+valeriogalano/podcast-feed-hugo | Podcast Feed Hugo
+valeriogalano/podcast-audiogram-generator | Podcast Audiogram Generator
+valeriogalano/podcast-audiogram-publisher | Podcast Audiogram Publisher
+valeriogalano/social-carousel-generator | Social Carousel Generator
+
+# valeriogalano.it
+valeriogalano/valeriogalano-website | valeriogalano.it - Website
+valeriogalano/valeriogalano-assets | valeriogalano.it - Assets
+
+# daredevel.com
+valeriogalano/daredevel-website | daredevel.com - Website
+valeriogalano/daredevel-assets | daredevel.com - Assets
