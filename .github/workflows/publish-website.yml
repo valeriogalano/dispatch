@@ -52,6 +52,7 @@ jobs:
           cd website
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/valeriogalano/pensieriincodice-website.git"
           git checkout -b "$BRANCH"
           git add "content/blog/recap-${DATE}.md"
           git commit -m "feat: add recap post for ${DATE}"
