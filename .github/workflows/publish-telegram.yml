@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       date:
-        description: "Digest date (YYYY-MM-DD, default: today)"
+        description: "Date of the recap to publish (YYYY-MM-DD, default: today)"
         required: false
         default: ""
 
