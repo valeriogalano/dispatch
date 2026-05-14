@@ -20,15 +20,15 @@ jobs:
         id: file
         run: |
           if [ -n "${{ github.event.inputs.date }}" ]; then
-            DATE="${{ github.event.inputs.date }}"
+            FILE="output/recap-blog-${{ github.event.inputs.date }}.md"
           else
-            DATE=$(date -u '+%Y-%m-%d')
+            FILE=$(ls output/recap-blog-*.md 2>/dev/null | sort | tail -1)
           fi
-          FILE="output/recap-blog-${DATE}.md"
-          if [ ! -f "$FILE" ]; then
-            echo "[error] file not found: $FILE" >&2
+          if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
+            echo "[error] no recap-blog file found" >&2
             exit 1
           fi
+          DATE=$(basename "$FILE" .md | sed 's/recap-blog-//')
           echo "path=$FILE" >> "$GITHUB_OUTPUT"
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
 
