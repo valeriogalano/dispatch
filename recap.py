@@ -133,7 +133,7 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
             f"author: Valerio Galano\n"
             f"---\n\n"
         )
-        blog_path.write_text(header + frontmatter + blog_text, encoding="utf-8")
+        blog_path.write_text(frontmatter + header + blog_text, encoding="utf-8")
         print(f"[saved] {blog_path}", file=sys.stderr)
         print(f"\n=== {date_str} — BLOG (titolo: {title}) ===\n{blog_text}")
 
