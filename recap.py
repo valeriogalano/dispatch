@@ -131,6 +131,7 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
             f"tags:\n"
             f"- Dev\n"
             f"- Recap\n"
+            f"- Generato\n"
             f"categories:\n"
             f"- News\n"
             f"type: blog\n"
