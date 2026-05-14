@@ -1,0 +1,65 @@
+name: Generate Recap for Blog
+
+on:
+  workflow_dispatch:
+    inputs:
+      digests:
+        description: "Digest dates, comma-separated (YYYY-MM-DD,...); leave empty for the latest"
+        required: false
+        default: ""
+
+jobs:
+  recap:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Create virtualenv and install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install google-genai
+
+      - name: Build recap arguments
+        id: args
+        run: |
+          INPUT="${{ github.event.inputs.digests }}"
+          if [ -z "$INPUT" ]; then
+            echo "flags=" >> "$GITHUB_OUTPUT"
+          else
+            FLAGS=""
+            IFS=',' read -ra DATES <<< "$INPUT"
+            for DATE in "${DATES[@]}"; do
+              DATE=$(echo "$DATE" | tr -d ' ')
+              FILE="output/digest-${DATE}.md"
+              if [ ! -f "$FILE" ]; then
+                echo "[error] digest not found: $FILE" >&2
+                exit 1
+              fi
+              FLAGS="$FLAGS --digest $FILE"
+            done
+            echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run recap.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          .venv/bin/python recap.py --format blog ${{ steps.args.outputs.flags }}
+
+      - name: Commit recap files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/recap-blog-*.md
+          git diff --cached --quiet || git commit -m "chore: add blog recap $(date -u '+%Y-%m-%d')"
+          git push

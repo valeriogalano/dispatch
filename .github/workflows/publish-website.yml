@@ -1,0 +1,65 @@
+name: Publish Recap to Website
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Digest date (YYYY-MM-DD, default: today)"
+        required: false
+        default: ""
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dev-updates repository
+        uses: actions/checkout@v4
+
+      - name: Resolve recap file
+        id: file
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            DATE="${{ github.event.inputs.date }}"
+          else
+            DATE=$(date -u '+%Y-%m-%d')
+          fi
+          FILE="output/recap-blog-${DATE}.md"
+          if [ ! -f "$FILE" ]; then
+            echo "[error] file not found: $FILE" >&2
+            exit 1
+          fi
+          echo "path=$FILE" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout pensieriincodice-website
+        uses: actions/checkout@v4
+        with:
+          repository: valeriogalano/pensieriincodice-website
+          token: ${{ secrets.GH_TOKEN }}
+          path: website
+
+      - name: Copy recap to website and open PR
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          DATE="${{ steps.file.outputs.date }}"
+          BRANCH="recap/${DATE}"
+          DEST="website/content/blog/recap-${DATE}.md"
+
+          cp "${{ steps.file.outputs.path }}" "$DEST"
+
+          cd website
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add "content/blog/recap-${DATE}.md"
+          git commit -m "feat: add recap post for ${DATE}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --repo valeriogalano/pensieriincodice-website \
+            --title "Recap ${DATE}" \
+            --body "Post recap settimanale generato automaticamente da dev-updates per il ${DATE}." \
+            --base main \
+            --head "$BRANCH"
