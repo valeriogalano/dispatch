@@ -54,14 +54,3 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: add weekly digest $(date -u '+%Y-%m-%d')"
           git push
 
-      - name: Notify failure on Telegram
-        if: failure()
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          MSG="⚠️ *Weekly Dev Digest* fallito"$'\n'"Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${MSG}" \
-            --data-urlencode "parse_mode=Markdown"
