@@ -101,7 +101,7 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
 
     print(f"Generating recaps from {digest_path}…", file=sys.stderr)
 
-    header = f"_Questo recap è stato generato con {MODEL}_\n\n"
+    header = f"_Questo testo è stato generato con {MODEL}_\n\n"
 
     if "telegram" in formats:
         print("  → Telegram recap…", file=sys.stderr)
