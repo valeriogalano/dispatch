@@ -56,7 +56,8 @@ Il tuo stile per i post del blog:
 BLOG_USER = """\
 Ecco il digest dei commit. Scrivi un post narrativo per il blog Pensieri in codice.
 Non elencare i commit uno per uno: sintetizza, racconta, dai senso al lavoro fatto.
-Se il periodo è stato quieto, può essere l'occasione per una riflessione più ampia.
+Ignora i commit di pubblicazione episodi (mp3, metadati episodio, copertine, trascrizioni, soundbite, script).
+Se il periodo è stato quieto o dopo l'esclusione non rimane nulla di significativo, può essere l'occasione per una riflessione più ampia.
 
 {digest}
 """
