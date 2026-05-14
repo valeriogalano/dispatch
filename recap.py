@@ -121,7 +121,7 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
 
         print("  → Blog recap…", file=sys.stderr)
         blog_text = call_gemini(client, BLOG_SYSTEM, BLOG_USER.format(digest=digest_text))
-        blog_path = out_dir / f"recap-blog-{date_str}.md"
+        blog_path = out_dir / f"{date_str}-recap.md"
         frontmatter = (
             f"---\n"
             f"title: \"{title}\"\n"

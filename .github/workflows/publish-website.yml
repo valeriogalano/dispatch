@@ -20,15 +20,15 @@ jobs:
         id: file
         run: |
           if [ -n "${{ github.event.inputs.date }}" ]; then
-            FILE="output/recap-blog-${{ github.event.inputs.date }}.md"
+            FILE="output/${{ github.event.inputs.date }}-recap.md"
           else
-            FILE=$(ls output/recap-blog-*.md 2>/dev/null | sort | tail -1)
+            FILE=$(ls output/*-recap.md 2>/dev/null | sort | tail -1)
           fi
           if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
-            echo "[error] no recap-blog file found" >&2
+            echo "[error] no recap blog file found" >&2
             exit 1
           fi
-          DATE=$(basename "$FILE" .md | sed 's/recap-blog-//')
+          DATE=$(basename "$FILE" -recap.md)
           echo "path=$FILE" >> "$GITHUB_OUTPUT"
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
 
@@ -45,7 +45,7 @@ jobs:
         run: |
           DATE="${{ steps.file.outputs.date }}"
           BRANCH="recap/${DATE}"
-          DEST="website/content/blog/recap-${DATE}.md"
+          DEST="website/content/blog/${DATE}-recap.md"
 
           cp "${{ steps.file.outputs.path }}" "$DEST"
 
@@ -54,7 +54,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/valeriogalano/pensieriincodice-website.git"
           git checkout -b "$BRANCH"
-          git add "content/blog/recap-${DATE}.md"
+          git add "content/blog/${DATE}-recap.md"
           git commit -m "feat: add recap post for ${DATE}"
           git push origin "$BRANCH"
 
