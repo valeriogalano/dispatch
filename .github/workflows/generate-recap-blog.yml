@@ -8,7 +8,7 @@ on:
         required: false
         default: ""
   workflow_run:
-    workflows: ["Weekly Dev Digest"]
+    workflows: ["Generate Recap for Telegram"]
     types: [completed]
 
 jobs:
