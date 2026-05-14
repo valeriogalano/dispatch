@@ -7,10 +7,14 @@ on:
         description: "Digest dates, comma-separated (YYYY-MM-DD,...); leave empty for the latest"
         required: false
         default: ""
+  workflow_run:
+    workflows: ["Weekly Dev Digest"]
+    types: [completed]
 
 jobs:
   recap:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
 
@@ -60,7 +64,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/recap-blog-*.md
+          git add output/*-recap.md
           git diff --cached --quiet || git commit -m "chore: add blog recap $(date -u '+%Y-%m-%d')"
           git push
-

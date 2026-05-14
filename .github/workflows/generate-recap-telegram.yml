@@ -7,10 +7,14 @@ on:
         description: "Digest dates, comma-separated (YYYY-MM-DD,...); leave empty for the latest"
         required: false
         default: ""
+  workflow_run:
+    workflows: ["Weekly Dev Digest"]
+    types: [completed]
 
 jobs:
   recap:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
 
@@ -63,4 +67,3 @@ jobs:
           git add output/recap-telegram-*.md
           git diff --cached --quiet || git commit -m "chore: add telegram recap $(date -u '+%Y-%m-%d')"
           git push
-

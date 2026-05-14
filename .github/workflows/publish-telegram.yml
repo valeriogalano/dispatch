@@ -4,17 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       date:
-        description: "Date of the recap to publish (YYYY-MM-DD, default: today)"
+        description: "Date of the recap to publish (YYYY-MM-DD, default: latest)"
         required: false
         default: ""
+  workflow_run:
+    workflows: ["Generate Recap for Telegram"]
+    types: [completed]
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Resolve recap file
         id: file
@@ -42,4 +48,3 @@ jobs:
             --data-urlencode "parse_mode=Markdown")
           echo "$RESPONSE"
           echo "$RESPONSE" | grep -q '"ok":true' || exit 1
-
