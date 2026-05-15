@@ -62,18 +62,6 @@ Se il periodo è stato quieto o dopo l'esclusione non rimane nulla di significat
 {digest}
 """
 
-TITLE_SYSTEM = """\
-Sei Valerio Galano, il creatore del podcast Pensieri in codice.
-Genera un titolo breve e accattivante in italiano per un post blog di tipo recap settimanale degli aggiornamenti tecnici.
-Rispondi con il solo titolo, senza virgolette, senza prefissi, senza spiegazioni.
-"""
-
-TITLE_USER = """\
-Ecco il digest dei commit della settimana. Genera il titolo del post.
-
-{digest}
-"""
-
 
 def call_gemini(client: genai.Client, system: str, user: str) -> str:
     response = client.models.generate_content(
@@ -116,8 +104,7 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
         print(f"\n=== {date_str} — TELEGRAM ===\n{telegram_text}")
 
     if "blog" in formats:
-        print("  → Titolo post blog…", file=sys.stderr)
-        title = call_gemini(client, TITLE_SYSTEM, TITLE_USER.format(digest=digest_text))
+        title = f"Recap automatizzato del {date_str}"
 
         print("  → Blog recap…", file=sys.stderr)
         blog_text = call_gemini(client, BLOG_SYSTEM, BLOG_USER.format(digest=digest_text))
