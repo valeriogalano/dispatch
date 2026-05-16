@@ -2,6 +2,8 @@
 # Format: owner/repo-name | Human Readable Name
 # Lines starting with # are comments, blank lines are ignored.
 
+valeriogalano/dev-updates | Dev updates
+
 # Pensieri in codice
 valeriogalano/pensieriincodice-assets | Pensieri in codice - Assets
 valeriogalano/pensieriincodice-cdn | Pensieri in codice - CDN
