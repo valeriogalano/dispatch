@@ -75,6 +75,21 @@ def categorize(message: str) -> str:
     return CATEGORY_MAP.get(prefix, "Changed")
 
 
+def extract_author(item: dict) -> str:
+    """Return display name for external human contributors; empty string otherwise."""
+    author_info = item.get("author") or {}
+    login = author_info.get("login", "")
+    if (
+        not login
+        or author_info.get("type") != "User"
+        or login.endswith("[bot]")
+        or login.lower() == "valeriogalano"
+    ):
+        return ""
+    name = item.get("commit", {}).get("author", {}).get("name", "").strip()
+    return name or login
+
+
 def fetch_commits(slug: str, since: datetime, token: str) -> list[dict]:
     url = f"{GITHUB_API}/repos/{slug}/commits"
     raw = github_get(url, token, params={"since": since.isoformat()})
@@ -85,7 +100,14 @@ def fetch_commits(slug: str, since: datetime, token: str) -> list[dict]:
         body = full_msg[len(subject):].strip()
         sha = item.get("sha", "")[:7]
         html_url = item.get("html_url", "")
-        commits.append({"sha": sha, "subject": subject, "body": body, "url": html_url, "category": categorize(subject)})
+        commits.append({
+            "sha": sha,
+            "subject": subject,
+            "body": body,
+            "url": html_url,
+            "category": categorize(subject),
+            "author": extract_author(item),
+        })
     return commits
 
 
@@ -113,7 +135,8 @@ def build_digest(repos: list[dict], days: int, token: str) -> str:
                 continue
             lines.append(f"### {cat}")
             for c in categorized[cat]:
-                lines.append(f"- [`{c['sha']}`]({c['url']}) {c['subject']}")
+                attribution = f" — by {c['author']}" if c.get("author") else ""
+                lines.append(f"- [`{c['sha']}`]({c['url']}) {c['subject']}{attribution}")
                 if c["body"]:
                     for body_line in c["body"].splitlines():
                         lines.append(f"  {body_line}")

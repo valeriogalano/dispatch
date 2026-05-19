@@ -12,19 +12,18 @@ from google import genai
 MODEL = "gemini-3-flash-preview"
 
 TELEGRAM_SYSTEM = """\
-Sei Valerio Galano, il creatore del podcast Pensieri in codice (pensieriincodice.it).
-Scrivi in italiano, in prima persona, con un tono personale, diretto e appassionato.
-Rivolgiti al lettore usando il "tu".
+Sei un assistente che scrive aggiornamenti tecnici settimanali per il canale Telegram di Pensieri in codice (pensieriincodice.it).
+Scrivi in italiano, in terza persona, riferendoti all'autore come "Valerio".
 Il tuo stile per Telegram:
 - Apri con un titolo breve con emoji che cattura il tema della settimana
-- Scrivi un breve paragrafo introduttivo narrativo (2-3 righe), non un elenco
+- Un brevissimo cappello introduttivo (1-2 righe max), non un elenco
 - Raggruppa le novità per tema o progetto correlato, non necessariamente una sezione per repository
 - Ogni sezione ha un'emoji + titolo descrittivo
 - Bullet point con label in **grassetto** seguita da spiegazione concisa
 - Includi i link GitHub dove rilevante (formato: https://github.com/valeriogalano/nome-repo)
-- Chiudi con una nota personale breve e il tag #recap
-- Tono: entusiasta ma concreto, come se lo raccontassi a un amico tecnico nel canale Telegram
-- Lunghezza totale: 300-500 parole
+- Se nel digest compare un commit con "by Nome", menziona il contributo: "con il contributo di Nome"
+- Tono: informativo e diretto, come una newsletter tecnica schematica
+- Lunghezza totale: 200-350 parole
 Ignora completamente i commit relativi alla pubblicazione di episodi del podcast (upload di mp3, aggiunta di metadati, copertine, trascrizioni, soundbite, script di episodi). Parla solo di sviluppi tecnici e nuove funzionalità.
 Se dopo aver escluso questi commit non rimane nulla di significativo, scrivi un messaggio onesto che questa settimana non ci sono stati sviluppi tecnici rilevanti.
 """
@@ -33,22 +32,22 @@ TELEGRAM_USER = """\
 Ecco il digest dei commit. Genera il post Telegram nel tuo stile.
 Raggruppa per tema logico, non per repository. Se ci sono repository correlati, trattali insieme.
 Ignora i commit di pubblicazione episodi (mp3, metadati episodio, copertine, trascrizioni, soundbite, script).
+{blog_instruction}
 
 {digest}
 """
 
 BLOG_SYSTEM = """\
-Sei Valerio Galano, il creatore del podcast Pensieri in codice (pensieriincodice.it).
-Scrivi in italiano, in prima persona, con un tono narrativo, curioso e personale.
+Sei un assistente che scrive post narrativi per il blog Pensieri in codice (pensieriincodice.it).
+Scrivi in italiano, in terza persona, riferendoti all'autore come "Valerio". Non usare mai la prima persona.
 Il tuo stile per i post del blog:
 - Scrivi in prosa fluente, non usare bullet point
-- Rivolgiti al lettore con il "tu"
-- Racconta cosa hai fatto come se lo stessi raccontando a un amico: non elenchi, ma storia
-- Puoi partire da un'osservazione, una sensazione, un problema che hai incontrato
+- Racconta cosa ha fatto Valerio come se lo stessi raccontando a un lettore curioso: non elenchi, ma storia
+- Puoi partire da un'osservazione, una sensazione, un problema che ha incontrato
 - Usa qualche emoji nel testo per dare vivacità, con misura (non più di una ogni due paragrafi)
 - Per ogni progetto citato includi il link GitHub nella forma https://github.com/valeriogalano/nome-repo
+- Se nel digest compare un commit con "by Nome", attribuisci quel lavoro a quella persona nel testo
 - Includi una piccola riflessione finale — non necessariamente tecnica
-- Tono: come i tuoi post tipo "Hello World: l'origine dell'esempio per eccellenza"
 - Non serve un frontmatter YAML: scrivi solo il corpo del post
 - Lunghezza: 300-500 parole
 """
@@ -87,7 +86,7 @@ def extract_date_from_path(path: Path) -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
-def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, formats: list[str]) -> None:
+def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, formats: list[str], blog_url: str = "") -> None:
     digest_text = digest_path.read_text(encoding="utf-8")
     date_str = extract_date_from_path(digest_path)
 
@@ -97,7 +96,14 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
 
     if "telegram" in formats:
         print("  → Telegram recap…", file=sys.stderr)
-        telegram_text = call_gemini(client, TELEGRAM_SYSTEM, TELEGRAM_USER.format(digest=digest_text))
+        blog_instruction = (
+            f'Al termine del post aggiungi: "📖 Articolo completo: {blog_url}" seguito dal tag #recap'
+            if blog_url else "Chiudi con il tag #recap"
+        )
+        telegram_text = call_gemini(
+            client, TELEGRAM_SYSTEM,
+            TELEGRAM_USER.format(digest=digest_text, blog_instruction=blog_instruction),
+        )
         telegram_path = out_dir / f"recap-telegram-{date_str}.md"
         telegram_path.write_text(header + telegram_text, encoding="utf-8")
         print(f"[saved] {telegram_path}", file=sys.stderr)
@@ -137,6 +143,7 @@ def main():
     parser.add_argument("--format", action="append", dest="formats", choices=["telegram", "blog"],
                         metavar="FORMAT", help="Format to generate: telegram, blog (repeatable; default: both)")
     parser.add_argument("--output-dir", default="output", help="Output directory (default: output)")
+    parser.add_argument("--blog-url", default="", help="URL of the blog post to include in the Telegram recap")
     args = parser.parse_args()
 
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -161,7 +168,7 @@ def main():
     client = genai.Client(api_key=api_key)
 
     for digest_path in digest_paths:
-        generate_recap(client, digest_path, out_dir, formats)
+        generate_recap(client, digest_path, out_dir, formats, blog_url=args.blog_url or "")
 
 
 if __name__ == "__main__":
