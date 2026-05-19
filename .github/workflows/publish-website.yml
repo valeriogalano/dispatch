@@ -64,9 +64,11 @@ jobs:
           git commit -m "feat: add recap post for ${DATE}"
           git push origin "$BRANCH"
 
-          gh pr create \
+          PR_URL=$(gh pr create \
             --repo valeriogalano/pensieriincodice-website \
             --title "Recap ${DATE}" \
             --body "Post recap settimanale generato automaticamente da dev-updates per il ${DATE}." \
             --base main \
-            --head "$BRANCH"
+            --head "$BRANCH")
+
+          gh pr merge "$PR_URL" --merge
