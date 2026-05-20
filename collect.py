@@ -90,9 +90,12 @@ def extract_author(item: dict) -> str:
     return name or login
 
 
-def fetch_commits(slug: str, since: datetime, token: str) -> list[dict]:
+def fetch_commits(slug: str, since: datetime, token: str, until: datetime = None) -> list[dict]:
     url = f"{GITHUB_API}/repos/{slug}/commits"
-    raw = github_get(url, token, params={"since": since.isoformat()})
+    params = {"since": since.isoformat()}
+    if until:
+        params["until"] = until.isoformat()
+    raw = github_get(url, token, params=params)
     commits = []
     for item in raw:
         full_msg = item.get("commit", {}).get("message", "")
@@ -111,14 +114,17 @@ def fetch_commits(slug: str, since: datetime, token: str) -> list[dict]:
     return commits
 
 
-def build_digest(repos: list[dict], days: int, token: str) -> str:
-    since = datetime.now(timezone.utc) - timedelta(days=days)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    lines = [f"# Dev Updates — {today}", f"_Last {days} days_", ""]
+def build_digest(repos: list[dict], token: str, since: datetime, until: datetime, append: bool = False) -> str:
+    lines = []
+
+    if not append:
+        label = until.strftime("%Y-%m-%d")
+        delta_days = (until - since).days
+        lines += [f"# Dev Updates — {label}", f"_Last {delta_days} days_", ""]
 
     any_content = False
     for repo in repos:
-        commits = fetch_commits(repo["slug"], since, token)
+        commits = fetch_commits(repo["slug"], since, token, until=until)
         if not commits:
             continue
         any_content = True
@@ -142,7 +148,7 @@ def build_digest(repos: list[dict], days: int, token: str) -> str:
                         lines.append(f"  {body_line}")
             lines.append("")
 
-    if not any_content:
+    if not any_content and not append:
         lines.append("_No commits found in this period._")
         lines.append("")
 
@@ -152,6 +158,9 @@ def build_digest(repos: list[dict], days: int, token: str) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Collect GitHub digest and save to file.")
     parser.add_argument("--days", type=int, default=7, help="Number of days to look back (default: 7)")
+    parser.add_argument("--since", help="Start date YYYY-MM-DD (overrides --days)")
+    parser.add_argument("--until", help="End date YYYY-MM-DD (default: today)")
+    parser.add_argument("--append", action="store_true", help="Append repo sections to existing digest file")
     parser.add_argument("--config", default="config.txt", help="Path to config file (default: config.txt)")
     parser.add_argument("--output-dir", default="output", help="Output directory (default: output)")
     args = parser.parse_args()
@@ -161,20 +170,32 @@ def main():
         print("[error] GH_TOKEN environment variable not set", file=sys.stderr)
         sys.exit(1)
 
+    now = datetime.now(timezone.utc)
+    until_dt = datetime.fromisoformat(args.until).replace(tzinfo=timezone.utc) if args.until else now
+    if args.since:
+        since_dt = datetime.fromisoformat(args.since).replace(tzinfo=timezone.utc)
+    else:
+        since_dt = until_dt - timedelta(days=args.days)
+
     repos = load_config(args.config)
     if not repos:
         print("[warn] no repos configured, exiting", file=sys.stderr)
         sys.exit(0)
 
-    print(f"Collecting commits from {len(repos)} repo(s) over the last {args.days} day(s)…", file=sys.stderr)
-    digest = build_digest(repos, args.days, gh_token)
+    print(f"Collecting commits from {len(repos)} repo(s) between {since_dt.date()} and {until_dt.date()}…", file=sys.stderr)
+    digest = build_digest(repos, gh_token, since=since_dt, until=until_dt, append=args.append)
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    out_path = out_dir / f"digest-{today}.md"
-    out_path.write_text(digest, encoding="utf-8")
-    print(f"[saved] {out_path}", file=sys.stderr)
+    out_path = out_dir / f"digest-{until_dt.strftime('%Y-%m-%d')}.md"
+
+    if args.append and out_path.exists():
+        existing = out_path.read_text(encoding="utf-8")
+        out_path.write_text(existing.rstrip("\n") + "\n\n" + digest, encoding="utf-8")
+        print(f"[appended] {out_path}", file=sys.stderr)
+    else:
+        out_path.write_text(digest, encoding="utf-8")
+        print(f"[saved] {out_path}", file=sys.stderr)
 
     print(digest)
 
