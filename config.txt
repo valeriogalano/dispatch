@@ -40,3 +40,4 @@ valeriogalano/daredevel-assets | daredevel.com - Assets
 valeriogalano/AudioPills | AudioPills
 valeriogalano/PrompterCam | PrompterCam
 valeriogalano/KeepInTouch | KeepInTouch
+valeriogalano/Highlighter | Highlighter
