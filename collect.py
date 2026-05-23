@@ -90,6 +90,14 @@ def extract_author(item: dict) -> str:
     return name or login
 
 
+def is_repo_public(slug: str, token: str) -> bool:
+    url = f"{GITHUB_API}/repos/{slug}"
+    data = github_get(url, token)
+    if isinstance(data, dict):
+        return not data.get("private", True)
+    return False
+
+
 def fetch_commits(slug: str, since: datetime, token: str, until: datetime = None) -> list[dict]:
     url = f"{GITHUB_API}/repos/{slug}/commits"
     params = {"since": since.isoformat()}
@@ -129,7 +137,8 @@ def build_digest(repos: list[dict], token: str, since: datetime, until: datetime
             continue
         any_content = True
         lines.append(f"## {repo['name']}")
-        lines.append(f"<https://github.com/{repo['slug']}/commits>")
+        if is_repo_public(repo["slug"], token):
+            lines.append(f"<https://github.com/{repo['slug']}/commits>")
         lines.append("")
 
         categorized: dict[str, list] = {}
