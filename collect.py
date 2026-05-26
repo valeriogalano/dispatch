@@ -32,7 +32,8 @@ def load_config(path: str) -> list[dict]:
                 continue
             slug = parts[0]
             name = parts[1]
-            repos.append({"slug": slug, "name": name})
+            link = parts[2] if len(parts) >= 3 else None
+            repos.append({"slug": slug, "name": name, "link": link})
     return repos
 
 
@@ -137,7 +138,9 @@ def build_digest(repos: list[dict], token: str, since: datetime, until: datetime
             continue
         any_content = True
         lines.append(f"## {repo['name']}")
-        if is_repo_public(repo["slug"], token):
+        if repo.get("link"):
+            lines.append(f"<{repo['link']}>")
+        elif is_repo_public(repo["slug"], token):
             lines.append(f"<https://github.com/{repo['slug']}/commits>")
         lines.append("")
 
