@@ -1,5 +1,6 @@
 # GitHub Digest Configuration
-# Format: owner/repo-name | Human Readable Name
+# Format: owner/repo-name | Human Readable Name [| custom-link]
+# The optional custom-link overrides the default GitHub link (useful for private repos).
 # Lines starting with # are comments, blank lines are ignored.
 
 valeriogalano/dev-updates | Dev updates
@@ -37,7 +38,10 @@ valeriogalano/daredevel-website | daredevel.com - Website
 valeriogalano/daredevel-assets | daredevel.com - Assets
 
 # iOS Apps
-valeriogalano/AudioPills | AudioPills
 valeriogalano/PrompterCam | PrompterCam
 valeriogalano/KeepInTouch | KeepInTouch
 valeriogalano/Highlighter | Highlighter
+
+# Desktop Apps
+valeriogalano/AudioPills | AudioPills
+valeriogalano/HighlighterDesktop | HighlighterDesktop
