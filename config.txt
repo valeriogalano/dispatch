@@ -44,4 +44,3 @@ valeriogalano/Highlighter | Highlighter
 
 # Desktop Apps
 valeriogalano/AudioPills | AudioPills
-valeriogalano/HighlighterDesktop | HighlighterDesktop
