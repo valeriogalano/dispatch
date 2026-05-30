@@ -137,10 +137,11 @@ def build_digest(repos: list[dict], token: str, since: datetime, until: datetime
         if not commits:
             continue
         any_content = True
+        repo_public = is_repo_public(repo["slug"], token)
         lines.append(f"## {repo['name']}")
         if repo.get("link"):
             lines.append(f"<{repo['link']}>")
-        elif is_repo_public(repo["slug"], token):
+        elif repo_public:
             lines.append(f"<https://github.com/{repo['slug']}/commits>")
         lines.append("")
 
@@ -154,7 +155,8 @@ def build_digest(repos: list[dict], token: str, since: datetime, until: datetime
             lines.append(f"### {cat}")
             for c in categorized[cat]:
                 attribution = f" — by {c['author']}" if c.get("author") else ""
-                lines.append(f"- [`{c['sha']}`]({c['url']}) {c['subject']}{attribution}")
+                commit_ref = f"[`{c['sha']}`]({c['url']})" if repo_public else f"`{c['sha']}`"
+                lines.append(f"- {commit_ref} {c['subject']}{attribution}")
                 if c["body"]:
                     for body_line in c["body"].splitlines():
                         lines.append(f"  {body_line}")

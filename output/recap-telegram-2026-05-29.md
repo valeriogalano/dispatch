@@ -14,12 +14,10 @@ Valerio ha dedicato la settimana a potenziare gli strumenti di automazione e a r
 * **Ore Fatturabili**: Introdotta la distinzione tra ore tracciate e ore effettivamente fatturabili. La funzionalità include un toggle di vista nella dashboard, supporto nel CLI e nei tool MCP, e indicatori visivi per le divergenze.
 * **QuickLog**: Aggiunta la sintassi inline `+Nh` (es. `+1h30m`) nella palette di ricerca per sommare ore direttamente a un progetto senza cambiare vista.
 * **Interfaccia**: Nuovi shortcut da tastiera (`?` per l'aiuto, `⌘⇧V` per il cambio vista, `⌘⇧H` per nascondere i progetti vuoti) e migliorata la visualizzazione dei task Todoist.
-* **GitHub**: https://github.com/valeriogalano/Timebox
 
 📱 **KeepInTouch & Highlighter**
 * **Soglie Contatti**: KeepInTouch permette ora di sovrascrivere le soglie di notifica globali per singoli contatti, salvando i dati direttamente nei metadati della rubrica iOS.
 * **Export Picker**: In Highlighter, l'opzione di condivisione tramite il foglio di sistema è ora sempre disponibile tra le scelte di esportazione.
-* **GitHub**: https://github.com/valeriogalano/KeepInTouch e https://github.com/valeriogalano/Highlighter
 
 🔧 **Infrastruttura e Assets**
 * **Dev Updates**: Migliorato lo script di generazione di questi recap, aggiungendo il supporto a link personalizzati e l'oscuramento automatico dei link a repository privati.

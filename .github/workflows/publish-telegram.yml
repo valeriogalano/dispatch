@@ -41,10 +41,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
         run: |
-          TEXT=$(cat "${{ steps.file.outputs.path }}")
-          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${TEXT}" \
-            --data-urlencode "parse_mode=Markdown")
-          echo "$RESPONSE"
-          echo "$RESPONSE" | grep -q '"ok":true' || exit 1
+          python3 publish_telegram.py "${{ steps.file.outputs.path }}"
