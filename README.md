@@ -96,6 +96,12 @@ python collect.py --days 7
 python recap.py --format telegram --format blog
 ```
 
+Naming convention in `output/`:
+
+- `digest-YYYY-MM-DD.md`
+- `recap-blog-YYYY-MM-DD.md`
+- `recap-telegram-YYYY-MM-DD.md`
+
 ### Individual options
 
 ```bash

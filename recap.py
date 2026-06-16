@@ -118,7 +118,7 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
 
         print("  → Blog recap…", file=sys.stderr)
         blog_text = call_gemini(client, BLOG_SYSTEM, BLOG_USER.format(digest=digest_text))
-        blog_path = out_dir / f"{date_str}-recap.md"
+        blog_path = out_dir / f"recap-blog-{date_str}.md"
         frontmatter = (
             f"---\n"
             f"title: \"{title}\"\n"
@@ -163,7 +163,7 @@ def main():
     else:
         latest = find_latest_digest(out_dir)
         if not latest:
-            print("[error] no digest file found in output/", file=sys.stderr)
+            print(f"[error] no digest file found in {out_dir}/", file=sys.stderr)
             sys.exit(1)
         digest_paths = [latest]
 
