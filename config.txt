@@ -9,6 +9,7 @@ valeriogalano/dev-updates | Dev updates
 valeriogalano/pensieriincodice-assets | Pensieri in codice - Assets
 valeriogalano/pensieriincodice-cdn | Pensieri in codice - CDN
 valeriogalano/pensieriincodice-website | Pensieri in codice - Website
+valeriogalano/podcast-audiogram-automation | Podcast Audiogram Automation
 
 # Podcast RSS to social
 valeriogalano/podcast-rss-to-telegram | Podcast RSS to Telegram
