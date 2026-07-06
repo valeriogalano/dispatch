@@ -123,6 +123,10 @@ def fetch_commits(slug: str, since: datetime, token: str, until: datetime = None
     return commits
 
 
+def repo_url(slug: str) -> str:
+    return f"https://github.com/{slug}"
+
+
 def build_digest(repos: list[dict], token: str, since: datetime, until: datetime, append: bool = False) -> str:
     lines = []
 
@@ -142,7 +146,7 @@ def build_digest(repos: list[dict], token: str, since: datetime, until: datetime
         if repo.get("link"):
             lines.append(f"<{repo['link']}>")
         elif repo_public:
-            lines.append(f"<https://github.com/{repo['slug']}/commits>")
+            lines.append(f"<{repo_url(repo['slug'])}>")
         lines.append("")
 
         categorized: dict[str, list] = {}

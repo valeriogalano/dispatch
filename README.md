@@ -5,7 +5,7 @@ After the digest is collected, two AI-generated recaps are produced via Gemini: 
 
 ## Features
 
-- **Automated Collection**: Fetches commits from multiple repositories using the GitHub API.
+- **Automated Collection**: Fetches commits from multiple repositories using the GitHub API and links each public project section to the repository page.
 - **Smart Categorization**: Groups commits by [Conventional Commits](https://www.conventionalcommits.org/) prefixes (feat, fix, etc.).
 - **AI-Powered Summaries**: Uses Google Gemini (`gemini-3-flash-preview`) to generate:
   - **Telegram Posts**: Schematic, emoji-rich updates tailored for technical channels.
@@ -22,7 +22,7 @@ After the digest is collected, two AI-generated recaps are produced via Gemini: 
 
 Every Friday at 18:00 UTC:
 
-1. `collect.py` reads `config.txt`, fetches commits from the last N days via the GitHub API, categorises them by [Conventional Commits](https://www.conventionalcommits.org/) prefix, and saves `output/digest-YYYY-MM-DD.md`
+1. `collect.py` reads `config.txt`, fetches commits from the last N days via the GitHub API, categorises them by [Conventional Commits](https://www.conventionalcommits.org/) prefix, links public project sections to the repository page, and saves `output/digest-YYYY-MM-DD.md`
 2. `recap.py` reads the digest and calls Gemini to produce:
    - `output/recap-telegram-YYYY-MM-DD.md` — schematic post ready to publish to Telegram
    - `output/recap-blog-YYYY-MM-DD.md` — narrative post with Hugo frontmatter for the Pensieri in codice blog

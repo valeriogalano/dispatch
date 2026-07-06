@@ -21,6 +21,7 @@ Il tuo stile per Telegram:
 - Ogni sezione ha un'emoji + titolo descrittivo
 - Bullet point con label in **grassetto** seguita da spiegazione concisa
 - Includi solo link presenti esplicitamente nel digest; non inventare, dedurre o ricostruire URL GitHub dai nomi dei progetti
+- Quando citi un progetto/repository, linka la pagina GitHub del progetto, non la lista dei commit e non un singolo commit
 - Se un progetto non ha link nel digest, citalo solo per nome senza URL
 - Se nel digest compare un commit con "by Nome", menziona il contributo: "con il contributo di Nome"
 - Tono: informativo e diretto, come una newsletter tecnica schematica
@@ -33,6 +34,7 @@ TELEGRAM_USER = """\
 Ecco il digest dei commit. Genera il post Telegram nel tuo stile.
 Raggruppa per tema logico, non per repository. Se ci sono repository correlati, trattali insieme.
 Usa solo i link già presenti nel digest. Non aggiungere URL GitHub per progetti che nel digest non hanno un link.
+Quando citi un progetto/repository, usa il link alla pagina del progetto indicato nella sua sezione del digest; non usare URL /commits né link a commit specifici come link del progetto.
 Ignora i commit di pubblicazione episodi (mp3, metadati episodio, copertine, trascrizioni, soundbite, script).
 {blog_instruction}
 
@@ -48,6 +50,7 @@ Il tuo stile per i post del blog:
 - Puoi partire da un'osservazione, una sensazione, un problema che ha incontrato
 - Usa qualche emoji nel testo per dare vivacità, con misura (non più di una ogni due paragrafi)
 - Includi solo link presenti esplicitamente nel digest; non inventare, dedurre o ricostruire URL GitHub dai nomi dei progetti
+- Quando citi un progetto/repository, linka la pagina GitHub del progetto, non la lista dei commit e non un singolo commit
 - Se un progetto non ha link nel digest, citalo solo per nome senza URL
 - Se nel digest compare un commit con "by Nome", attribuisci quel lavoro a quella persona nel testo
 - Includi una piccola riflessione finale — non necessariamente tecnica
@@ -59,6 +62,7 @@ BLOG_USER = """\
 Ecco il digest dei commit. Scrivi un post narrativo per il blog Pensieri in codice.
 Non elencare i commit uno per uno: sintetizza, racconta, dai senso al lavoro fatto.
 Usa solo i link già presenti nel digest. Non aggiungere URL GitHub per progetti che nel digest non hanno un link.
+Quando citi un progetto/repository, usa il link alla pagina del progetto indicato nella sua sezione del digest; non usare URL /commits né link a commit specifici come link del progetto.
 Ignora i commit di pubblicazione episodi (mp3, metadati episodio, copertine, trascrizioni, soundbite, script).
 Se il periodo è stato quieto o dopo l'esclusione non rimane nulla di significativo, può essere l'occasione per una riflessione più ampia.
 
