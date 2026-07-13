@@ -33,7 +33,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install google-genai
+          .venv/bin/pip install google-genai anthropic
 
       - name: Build recap arguments
         id: args
@@ -64,13 +64,8 @@ jobs:
       - name: Run recap.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          for i in 1 2 3; do
-            .venv/bin/python recap.py --format telegram --blog-url "${{ steps.args.outputs.blog_url }}" ${{ steps.args.outputs.flags }} && exit 0
-            echo "Attempt $i/3 failed"
-            [ $i -lt 3 ] && sleep 60
-          done
-          exit 1
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: .venv/bin/python recap.py --format telegram --blog-url "${{ steps.args.outputs.blog_url }}" ${{ steps.args.outputs.flags }}
 
       - name: Commit recap files
         run: |

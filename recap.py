@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""Generate Telegram and blog recaps from a digest file using Gemini."""
+"""Generate Telegram and blog recaps from a digest file using AI."""
 
 import argparse
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from google import genai
+from google.genai import errors as genai_errors
 
-MODEL = "gemini-3-flash-preview"
+GEMINI_MODEL = "gemini-3.5-flash"
+CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+
+_MAX_RETRIES_PER_PROVIDER = 3
 
 TELEGRAM_SYSTEM = """\
 Sei un assistente che scrive aggiornamenti tecnici settimanali per il canale Telegram di Pensieri in codice (pensieriincodice.it).
@@ -70,9 +75,10 @@ Se il periodo è stato quieto o dopo l'esclusione non rimane nulla di significat
 """
 
 
-def call_gemini(client: genai.Client, system: str, user: str) -> str:
+def _call_gemini(api_key: str, system: str, user: str) -> str:
+    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model=MODEL,
+        model=GEMINI_MODEL,
         contents=user,
         config=genai.types.GenerateContentConfig(
             system_instruction=system,
@@ -80,6 +86,61 @@ def call_gemini(client: genai.Client, system: str, user: str) -> str:
         ),
     )
     return response.text.strip()
+
+
+def _call_claude(api_key: str, system: str, user: str) -> str:
+    from anthropic import Anthropic
+    client = Anthropic(api_key=api_key)
+    message = client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=4096,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+    )
+    return message.content[0].text.strip()
+
+
+def _get_providers() -> list[str]:
+    raw = os.environ.get("AI_PROVIDER", "google,anthropic")
+    providers = [p.strip().lower() for p in raw.split(",") if p.strip()]
+    return providers or ["google", "anthropic"]
+
+
+def call_ai(system: str, user: str) -> str:
+    providers = _get_providers()
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+
+    for provider in providers:
+        print(f"  → using provider: {provider}", file=sys.stderr)
+        for attempt in range(1, _MAX_RETRIES_PER_PROVIDER + 1):
+            try:
+                if provider in {"google", "gemini"}:
+                    if not gemini_key:
+                        raise RuntimeError("GEMINI_API_KEY not set")
+                    result = _call_gemini(gemini_key, system, user)
+                    return f"gemini:{GEMINI_MODEL}", result
+                elif provider in {"anthropic", "claude"}:
+                    if not anthropic_key:
+                        raise RuntimeError("ANTHROPIC_API_KEY not set")
+                    result = _call_claude(anthropic_key, system, user)
+                    return f"claude:{CLAUDE_MODEL}", result
+                else:
+                    raise RuntimeError(f"unknown provider: {provider}")
+            except genai_errors.ServerError as e:
+                print(f"  → Gemini error (attempt {attempt}/{_MAX_RETRIES_PER_PROVIDER}): {e}", file=sys.stderr)
+                if attempt < _MAX_RETRIES_PER_PROVIDER:
+                    time.sleep(60)
+                else:
+                    print(f"  → provider {provider} exhausted, trying next...", file=sys.stderr)
+            except Exception as e:
+                print(f"  → error with {provider} (attempt {attempt}/{_MAX_RETRIES_PER_PROVIDER}): {e}", file=sys.stderr)
+                if attempt < _MAX_RETRIES_PER_PROVIDER:
+                    time.sleep(30)
+                else:
+                    print(f"  → provider {provider} exhausted, trying next...", file=sys.stderr)
+
+    raise RuntimeError(f"all providers exhausted: {', '.join(providers)}")
 
 
 def find_latest_digest(output_dir: Path) -> Path | None:
@@ -94,13 +155,11 @@ def extract_date_from_path(path: Path) -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
-def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, formats: list[str], blog_url: str = "") -> None:
+def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_url: str = "") -> None:
     digest_text = digest_path.read_text(encoding="utf-8")
     date_str = extract_date_from_path(digest_path)
 
     print(f"Generating recaps from {digest_path}…", file=sys.stderr)
-
-    header = f"_Questo testo è stato generato con {MODEL}_\n\n"
 
     if "telegram" in formats:
         print("  → Telegram recap…", file=sys.stderr)
@@ -108,10 +167,11 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
             f'Al termine del post aggiungi: "📖 Articolo completo: {blog_url}" seguito dal tag #recap'
             if blog_url else "Chiudi con il tag #recap"
         )
-        telegram_text = call_gemini(
-            client, TELEGRAM_SYSTEM,
+        model, telegram_text = call_ai(
+            TELEGRAM_SYSTEM,
             TELEGRAM_USER.format(digest=digest_text, blog_instruction=blog_instruction),
         )
+        header = f"_Questo testo è stato generato con {model}_\n\n"
         telegram_path = out_dir / f"recap-telegram-{date_str}.md"
         telegram_path.write_text(header + telegram_text, encoding="utf-8")
         print(f"[saved] {telegram_path}", file=sys.stderr)
@@ -121,7 +181,8 @@ def generate_recap(client: genai.Client, digest_path: Path, out_dir: Path, forma
         title = f"Recap automatizzato del {date_str}"
 
         print("  → Blog recap…", file=sys.stderr)
-        blog_text = call_gemini(client, BLOG_SYSTEM, BLOG_USER.format(digest=digest_text))
+        model, blog_text = call_ai(BLOG_SYSTEM, BLOG_USER.format(digest=digest_text))
+        header = f"_Questo testo è stato generato con {model}_\n\n"
         blog_path = out_dir / f"recap-blog-{date_str}.md"
         frontmatter = (
             f"---\n"
@@ -154,11 +215,6 @@ def main():
     parser.add_argument("--blog-url", default="", help="URL of the blog post to include in the Telegram recap")
     args = parser.parse_args()
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("[error] GEMINI_API_KEY environment variable not set", file=sys.stderr)
-        sys.exit(1)
-
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -173,10 +229,8 @@ def main():
 
     formats = args.formats or ["telegram", "blog"]
 
-    client = genai.Client(api_key=api_key)
-
     for digest_path in digest_paths:
-        generate_recap(client, digest_path, out_dir, formats, blog_url=args.blog_url or "")
+        generate_recap(digest_path, out_dir, formats, blog_url=args.blog_url or "")
 
 
 if __name__ == "__main__":
