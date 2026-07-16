@@ -53,9 +53,10 @@ All workflows can be triggered manually via the "Actions" tab:
 
 ```
 owner/repo-name | Human Readable Name
+codeberg:owner/repo-name | Human Readable Name
 ```
 
-Lines starting with `#` and blank lines are ignored.
+The optional `host:` prefix supports `codeberg` (public repos only, no token needed); the default is GitHub. Lines starting with `#` and blank lines are ignored.
 
 ### 2. Add secrets and variables to the repository
 
