@@ -10,7 +10,12 @@ from pathlib import Path
 
 import requests
 
-GITHUB_API = "https://api.github.com"
+# ponytail: Codeberg (Forgejo) API is GitHub-compatible for the endpoints we use;
+# tokens are only sent to GitHub, Codeberg repos must be public.
+HOSTS = {
+    "github": {"api": "https://api.github.com", "web": "https://github.com", "page_size": 100},
+    "codeberg": {"api": "https://codeberg.org/api/v1", "web": "https://codeberg.org", "page_size": 50},
+}
 
 CATEGORY_MAP = {
     "feat": "Added",
@@ -31,22 +36,30 @@ def load_config(path: str) -> list[dict]:
                 print(f"[warn] skipping malformed line: {line!r}", file=sys.stderr)
                 continue
             slug = parts[0]
+            host = "github"
+            if ":" in slug:
+                host, slug = slug.split(":", 1)
+                if host not in HOSTS:
+                    print(f"[warn] skipping unknown host in line: {line!r}", file=sys.stderr)
+                    continue
             name = parts[1]
             link = parts[2] if len(parts) >= 3 else None
-            repos.append({"slug": slug, "name": name, "link": link})
+            repos.append({"slug": slug, "name": name, "link": link, "host": host})
     return repos
 
 
-def github_get(url: str, token: str, params: dict = None) -> list | dict:
+def api_get(url: str, token: str | None, params: dict = None, page_size: int = 100) -> list | dict:
     headers = {
-        "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     results = []
     page = 1
     while True:
-        p = {"per_page": 100, "page": page, **(params or {})}
+        # per_page is GitHub's param, limit is Forgejo's; each API ignores the other
+        p = {"per_page": page_size, "limit": page_size, "page": page, **(params or {})}
         resp = requests.get(url, headers=headers, params=p, timeout=30)
         if resp.status_code == 403:
             reset = int(resp.headers.get("X-RateLimit-Reset", time.time() + 60))
@@ -60,7 +73,7 @@ def github_get(url: str, token: str, params: dict = None) -> list | dict:
         data = resp.json()
         if isinstance(data, list):
             results.extend(data)
-            if len(data) < 100:
+            if len(data) < page_size:
                 break
             page += 1
         else:
@@ -91,20 +104,30 @@ def extract_author(item: dict) -> str:
     return name or login
 
 
-def is_repo_public(slug: str, token: str) -> bool:
-    url = f"{GITHUB_API}/repos/{slug}"
-    data = github_get(url, token)
+def repo_host(repo: dict) -> dict:
+    return HOSTS[repo.get("host", "github")]
+
+
+def repo_token(repo: dict, token: str) -> str | None:
+    return token if repo.get("host", "github") == "github" else None
+
+
+def is_repo_public(repo: dict, token: str) -> bool:
+    host = repo_host(repo)
+    url = f"{host['api']}/repos/{repo['slug']}"
+    data = api_get(url, repo_token(repo, token), page_size=host["page_size"])
     if isinstance(data, dict):
         return not data.get("private", True)
     return False
 
 
-def fetch_commits(slug: str, since: datetime, token: str, until: datetime = None) -> list[dict]:
-    url = f"{GITHUB_API}/repos/{slug}/commits"
+def fetch_commits(repo: dict, since: datetime, token: str, until: datetime = None) -> list[dict]:
+    host = repo_host(repo)
+    url = f"{host['api']}/repos/{repo['slug']}/commits"
     params = {"since": since.isoformat()}
     if until:
         params["until"] = until.isoformat()
-    raw = github_get(url, token, params=params)
+    raw = api_get(url, repo_token(repo, token), params=params, page_size=host["page_size"])
     commits = []
     for item in raw:
         full_msg = item.get("commit", {}).get("message", "")
@@ -123,8 +146,8 @@ def fetch_commits(slug: str, since: datetime, token: str, until: datetime = None
     return commits
 
 
-def repo_url(slug: str) -> str:
-    return f"https://github.com/{slug}"
+def repo_url(repo: dict) -> str:
+    return f"{repo_host(repo)['web']}/{repo['slug']}"
 
 
 def build_digest(repos: list[dict], token: str, since: datetime, until: datetime, append: bool = False) -> str:
@@ -137,16 +160,16 @@ def build_digest(repos: list[dict], token: str, since: datetime, until: datetime
 
     any_content = False
     for repo in repos:
-        commits = fetch_commits(repo["slug"], since, token, until=until)
+        commits = fetch_commits(repo, since, token, until=until)
         if not commits:
             continue
         any_content = True
-        repo_public = is_repo_public(repo["slug"], token)
+        repo_public = is_repo_public(repo, token)
         lines.append(f"## {repo['name']}")
         if repo.get("link"):
             lines.append(f"<{repo['link']}>")
         elif repo_public:
-            lines.append(f"<{repo_url(repo['slug'])}>")
+            lines.append(f"<{repo_url(repo)}>")
         lines.append("")
 
         categorized: dict[str, list] = {}

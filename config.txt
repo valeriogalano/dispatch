@@ -1,6 +1,7 @@
 # GitHub Digest Configuration
-# Format: owner/repo-name | Human Readable Name [| custom-link]
-# The optional custom-link overrides the default GitHub link (useful for private repos).
+# Format: [host:]owner/repo-name | Human Readable Name [| custom-link]
+# host is "github" (default) or "codeberg".
+# The optional custom-link overrides the default repo link (useful for private repos).
 # Lines starting with # are comments, blank lines are ignored.
 
 valeriogalano/dev-updates | Dev updates
@@ -17,6 +18,9 @@ valeriogalano/podcast-rss-to-mastodon | Podcast RSS to Mastodon
 valeriogalano/podcast-rss-to-x | Podcast RSS to X
 valeriogalano/podcast-rss-to-linkedin | Podcast RSS to LinkedIn
 valeriogalano/podcast-quiz-to-telegram | Podcast Quiz to Telegram
+
+# GoodLinks
+codeberg:valeriogalano/goodlinks-publisher | GoodLinks Publisher
 
 # Readwise to social
 valeriogalano/readwise-to-telegram | Readwise to Telegram
