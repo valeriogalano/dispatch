@@ -12,9 +12,32 @@ on:
     types: [completed]
 
 jobs:
-  recap:
+  # an empty period is a handled case, not a failure: no digest for today means
+  # collect.py found nothing, so the chain stops here without a red run
+  check:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      proceed: ${{ steps.digest.outputs.proceed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Look for today's digest
+        id: digest
+        run: |
+          FILE="output/digest-$(date -u '+%Y-%m-%d').md"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -f "$FILE" ]; then
+            echo "proceed=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "[info] no ${FILE}: nothing new in this period, stopping the chain"
+            echo "proceed=no" >> "$GITHUB_OUTPUT"
+          fi
+
+  recap:
+    runs-on: ubuntu-latest
+    needs: check
+    if: ${{ needs.check.outputs.proceed == 'yes' }}
     permissions:
       contents: write
 

@@ -17,6 +17,8 @@ HOSTS = {
     "codeberg": {"api": "https://codeberg.org/api/v1", "web": "https://codeberg.org", "page_size": 50},
 }
 
+NO_COMMITS_MARKER = "_No commits found in this period._"
+
 CATEGORY_MAP = {
     "feat": "Added",
     "fix": "Fixed",
@@ -190,7 +192,7 @@ def build_digest(repos: list[dict], token: str, since: datetime, until: datetime
             lines.append("")
 
     if not any_content and not append:
-        lines.append("_No commits found in this period._")
+        lines.append(NO_COMMITS_MARKER)
         lines.append("")
 
     return "\n".join(lines)
@@ -225,6 +227,12 @@ def main():
 
     print(f"Collecting commits from {len(repos)} repo(s) between {since_dt.date()} and {until_dt.date()}…", file=sys.stderr)
     digest = build_digest(repos, gh_token, since=since_dt, until=until_dt, append=args.append)
+
+    # nothing happened in this window: write no file, so the workflows downstream
+    # find nothing to publish and stop the chain without failing
+    if NO_COMMITS_MARKER in digest:
+        print("[skip] no commits in this period, no digest written", file=sys.stderr)
+        return
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

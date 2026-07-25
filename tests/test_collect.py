@@ -71,3 +71,20 @@ class LoadConfigTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EmptyPeriodTests(unittest.TestCase):
+    @patch("collect.is_repo_public", return_value=True)
+    @patch("collect.fetch_commits", return_value=[])
+    def test_no_digest_file_is_written_when_there_are_no_commits(self, _fetch_commits, _is_repo_public):
+        import sys
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "config.txt"
+            config.write_text("owner/project | Project\n")
+            argv = ["collect.py", "--config", str(config), "--output-dir", tmp]
+            with patch.object(sys, "argv", argv), patch.dict("os.environ", {"GH_TOKEN": "token"}):
+                collect.main()
+            self.assertEqual([], list(Path(tmp).glob("digest-*.md")))
