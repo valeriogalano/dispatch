@@ -33,7 +33,7 @@ The chain runs again every hour between 19:00 and 22:00 UTC on Friday, to recove
 
 ### Manual updates (`manual/`)
 
-Things done outside git — a podcast episode, an article, a release — go in `manual/YYYY-MM-DD.md`, named with the date they happened. Notes falling inside the digest window are appended to the digest as raw material and interpreted by the AI together with the commits. See `manual/README.md`.
+Things done outside git — a podcast episode, an article, a release — go in `manual/YYYY-MM-DD.md`, named with the date they happened. Notes falling inside the digest window are appended to the digest under `## Manual updates` as raw material, and interpreted by the AI together with the commits. See `manual/README.md`.
 
 ### Workflow Chain
 

@@ -18,7 +18,7 @@ HOSTS = {
 }
 
 NO_COMMITS_MARKER = "_No commits found in this period._"
-MANUAL_HEADING = "## Aggiornamenti manuali"
+MANUAL_HEADING = "## Manual updates"
 
 CATEGORY_MAP = {
     "feat": "Added",
