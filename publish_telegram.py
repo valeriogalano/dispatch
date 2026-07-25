@@ -13,8 +13,13 @@ import urllib.request
 from pathlib import Path
 
 
+_LINK_RE = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
+
+
 def markdown_to_telegram_html(text: str) -> str:
     escaped = html.escape(text, quote=False)
+    # links first: the other rules would happily match inside an URL
+    escaped = _LINK_RE.sub(lambda m: f'<a href="{m.group(2).replace(chr(34), "&quot;")}">{m.group(1)}</a>', escaped)
     escaped = re.sub(r"`([^`\n]+)`", r"<code>\1</code>", escaped)
     escaped = re.sub(r"\*\*([^*\n]+)\*\*", r"<b>\1</b>", escaped)
     escaped = re.sub(r"(?m)^_([^_\n]+)_$", r"<i>\1</i>", escaped)
@@ -22,7 +27,7 @@ def markdown_to_telegram_html(text: str) -> str:
 
 
 def markdown_to_plain_text(text: str) -> str:
-    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = _LINK_RE.sub(r"\1: \2", text)
     text = text.replace("**", "")
     text = text.replace("`", "")
     text = re.sub(r"(?m)^_([^_\n]+)_$", r"\1", text)
