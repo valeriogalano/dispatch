@@ -15,6 +15,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -42,3 +44,12 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
         run: |
           python3 publish_telegram.py "${{ steps.file.outputs.path }}"
+
+      - name: Commit the sent marker
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/sent/
+          git diff --cached --quiet || git commit -m "chore: mark telegram recap as sent"
+          git pull --rebase
+          git push

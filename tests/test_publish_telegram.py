@@ -27,5 +27,49 @@ class MarkdownToPlainTextTests(unittest.TestCase):
         self.assertEqual("Vedi Dev updates: https://github.com/owner/repo", result)
 
 
+class AlreadySentTests(unittest.TestCase):
+    def test_second_run_does_not_send_again(self):
+        import os
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            recap = Path(tmp) / "recap-telegram-2026-07-24.md"
+            recap.write_text("ciao")
+            markers = Path(tmp) / "sent"
+            argv = ["publish_telegram.py", str(recap), "--marker-dir", str(markers)]
+            env = {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "c"}
+
+            with patch.object(sys, "argv", argv), patch.dict(os.environ, env), \
+                    patch("publish_telegram.send_message", return_value={"ok": True}) as send:
+                self.assertEqual(0, publish_telegram.main())
+                self.assertEqual(1, send.call_count)
+                self.assertTrue((markers / "recap-telegram-2026-07-24.sent").exists())
+
+                self.assertEqual(0, publish_telegram.main())
+                self.assertEqual(1, send.call_count)
+
+    def test_a_failed_send_leaves_no_marker(self):
+        import os
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            recap = Path(tmp) / "recap-telegram-2026-07-24.md"
+            recap.write_text("ciao")
+            markers = Path(tmp) / "sent"
+            argv = ["publish_telegram.py", str(recap), "--marker-dir", str(markers)]
+            env = {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "c"}
+
+            with patch.object(sys, "argv", argv), patch.dict(os.environ, env), \
+                    patch("publish_telegram.send_message", return_value={"ok": False, "error_code": 500}):
+                self.assertEqual(1, publish_telegram.main())
+            self.assertFalse((markers / "recap-telegram-2026-07-24.sent").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

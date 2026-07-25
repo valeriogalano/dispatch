@@ -62,6 +62,12 @@ jobs:
           INPUT="${{ github.event.inputs.digests }}"
           if [ -z "$INPUT" ]; then
             echo "flags=" >> "$GITHUB_OUTPUT"
+            DATE=$(ls output/digest-*.md 2>/dev/null | sort | tail -1 | sed 's|.*digest-||' | sed 's|\.md||')
+            # a re-run must not pay for the AI again, nor rewrite a recap already published
+            if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -f "output/recap-blog-${DATE}.md" ]; then
+              echo "[info] recap-blog-${DATE}.md already generated, keeping it"
+              echo "skip=yes" >> "$GITHUB_OUTPUT"
+            fi
           else
             FLAGS=""
             IFS=',' read -ra DATES <<< "$INPUT"
@@ -78,6 +84,7 @@ jobs:
           fi
 
       - name: Run recap.py
+        if: ${{ steps.args.outputs.skip != 'yes' }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -89,4 +96,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add output/recap-blog-*.md
           git diff --cached --quiet || git commit -m "chore: add blog recap $(date -u '+%Y-%m-%d')"
+          git pull --rebase
           git push

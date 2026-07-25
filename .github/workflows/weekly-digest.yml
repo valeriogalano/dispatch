@@ -3,6 +3,9 @@ name: Weekly Dev Digest
 on:
   schedule:
     - cron: "0 18 * * 5"  # Every Friday at 18:00 UTC
+    # hourly retries: every stage downstream is a no-op once it went through, so a
+    # failed run recovers by itself instead of waiting for a manual re-run
+    - cron: "0 19-22 * * 5"
   workflow_dispatch:
     inputs:
       days:
@@ -52,5 +55,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add output/
           git diff --cached --quiet || git commit -m "chore: add weekly digest $(date -u '+%Y-%m-%d')"
+          git pull --rebase
           git push
 

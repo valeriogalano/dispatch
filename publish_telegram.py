@@ -10,6 +10,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -62,10 +63,31 @@ def should_retry_plain(response: dict) -> bool:
     return response.get("error_code") == 400 and "can't parse entities" in description
 
 
+def marker_path(recap_file: str, marker_dir: str) -> Path:
+    return Path(marker_dir) / f"{Path(recap_file).stem}.sent"
+
+
+def write_marker(marker: Path) -> None:
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(datetime.now(timezone.utc).isoformat() + "\n", encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Publish a Markdown recap to Telegram.")
     parser.add_argument("file", help="Path to the recap file")
+    parser.add_argument(
+        "--marker-dir",
+        default="output/sent",
+        help="Directory holding the already-sent markers (default: output/sent)",
+    )
     args = parser.parse_args()
+
+    # a message cannot be unsent: never send the same recap twice, so the whole
+    # chain can be re-run to recover from a failure
+    marker = marker_path(args.file, args.marker_dir)
+    if marker.exists():
+        print(f"[skip] {args.file} already sent ({marker})")
+        return 0
 
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
@@ -77,6 +99,7 @@ def main() -> int:
 
     response = send_message(token, chat_id, markdown_to_telegram_html(source), parse_mode="HTML")
     if response.get("ok"):
+        write_marker(marker)
         print("[sent] Telegram message sent with HTML formatting")
         return 0
 
@@ -84,6 +107,7 @@ def main() -> int:
     if should_retry_plain(response):
         fallback = send_message(token, chat_id, markdown_to_plain_text(source))
         if fallback.get("ok"):
+            write_marker(marker)
             print("[sent] Telegram message sent as plain text after parse fallback")
             return 0
         print(f"[error] Telegram plain-text fallback failed: {fallback}", file=sys.stderr)
