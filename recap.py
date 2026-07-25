@@ -119,12 +119,12 @@ def call_ai(system: str, user: str) -> str:
                     if not gemini_key:
                         raise RuntimeError("GEMINI_API_KEY not set")
                     result = _call_gemini(gemini_key, system, user)
-                    return f"gemini:{GEMINI_MODEL}", result
+                    return GEMINI_MODEL, result
                 elif provider in {"anthropic", "claude"}:
                     if not anthropic_key:
                         raise RuntimeError("ANTHROPIC_API_KEY not set")
                     result = _call_claude(anthropic_key, system, user)
-                    return f"claude:{CLAUDE_MODEL}", result
+                    return CLAUDE_MODEL, result
                 else:
                     raise RuntimeError(f"unknown provider: {provider}")
             except genai_errors.ServerError as e:
