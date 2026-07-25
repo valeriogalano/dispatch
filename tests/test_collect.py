@@ -69,9 +69,6 @@ class LoadConfigTests(unittest.TestCase):
         self.assertEqual(repos[1]["slug"], "owner/cb-repo")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class EmptyPeriodTests(unittest.TestCase):
     @patch("collect.is_repo_public", return_value=True)

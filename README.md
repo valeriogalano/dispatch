@@ -22,12 +22,18 @@ After the digest is collected, two AI-generated recaps are produced via Gemini: 
 
 Every Friday at 18:00 UTC:
 
-1. `collect.py` reads `config.txt`, fetches commits from the last N days via the GitHub API, categorises them by [Conventional Commits](https://www.conventionalcommits.org/) prefix, links public project sections to the repository page, and saves `output/digest-YYYY-MM-DD.md`
+1. `collect.py` reads `config.txt`, fetches commits from the last N days via the GitHub API, categorises them by [Conventional Commits](https://www.conventionalcommits.org/) prefix, links public project sections to the repository page, appends any manual note from `manual/` falling in the window, and saves `output/digest-YYYY-MM-DD.md`. If the period is empty it writes no file at all, and the chain stops without failing
 2. `recap.py` reads the digest and calls Gemini to produce:
    - `output/recap-telegram-YYYY-MM-DD.md` — schematic post ready to publish to Telegram
    - `output/recap-blog-YYYY-MM-DD.md` — narrative post with Hugo frontmatter for the Pensieri in codice blog
 
 All files are committed back to the repository automatically.
+
+The chain runs again every hour between 19:00 and 22:00 UTC on Friday, to recover from a failed run without a manual re-run. Every stage is a no-op once it went through: the recap workflows skip the AI call when the file for that date exists, the website publication reuses the open PR, and `publish_telegram.py` records a marker in `output/sent/` and refuses to send the same recap twice.
+
+### Manual updates (`manual/`)
+
+Things done outside git — a podcast episode, an article, a release — go in `manual/YYYY-MM-DD.md`, named with the date they happened. Notes falling inside the digest window are appended to the digest as raw material and interpreted by the AI together with the commits. See `manual/README.md`.
 
 ### Workflow Chain
 
@@ -111,6 +117,7 @@ python collect.py --days 14 --until 2026-05-20
 
 # Custom output directory
 python collect.py --output-dir ./my-digests
+python collect.py --manual-dir ./my-notes
 python recap.py --output-dir ./my-digests
 
 # Generate only Telegram recap with a specific blog URL
