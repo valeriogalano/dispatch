@@ -50,6 +50,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           DATE="${{ steps.file.outputs.date }}"
+          REPO="valeriogalano/pensieriincodice-website"
           BRANCH="recap/${DATE}"
           DEST="website/content/blog/${DATE}-recap.md"
 
@@ -58,17 +59,47 @@ jobs:
           cd website
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/valeriogalano/pensieriincodice-website.git"
-          git checkout -b "$BRANCH"
+          git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${REPO}.git"
+
+          # -B instead of -b: a re-run after a failed later step must not die on an existing branch
+          git checkout -B "$BRANCH"
           git add "content/blog/${DATE}-recap.md"
+
+          if git diff --cached --quiet; then
+            echo "[info] recap for ${DATE} already on main, nothing to publish"
+            exit 0
+          fi
+
           git commit -m "feat: add recap post for ${DATE}"
-          git push origin "$BRANCH"
+          git push --force origin "$BRANCH"
 
-          PR_URL=$(gh pr create \
-            --repo valeriogalano/pensieriincodice-website \
-            --title "Recap ${DATE}" \
-            --body "Post recap settimanale generato automaticamente da dev-updates per il ${DATE}." \
-            --base main \
-            --head "$BRANCH")
+          find_pr() {
+            gh pr list --repo "$REPO" --head "$BRANCH" --state open --json url --jq '.[0].url'
+          }
 
-          gh pr merge "$PR_URL" --merge
+          # the GitHub API returns transient errors often enough to break the workflow chain
+          PR_URL=$(find_pr)
+          for i in 1 2 3; do
+            [ -n "$PR_URL" ] && break
+            gh pr create \
+              --repo "$REPO" \
+              --title "Recap ${DATE}" \
+              --body "Post recap settimanale generato automaticamente da dev-updates per il ${DATE}." \
+              --base main \
+              --head "$BRANCH" || true
+            PR_URL=$(find_pr)
+            [ -n "$PR_URL" ] || sleep $((i * 15))
+          done
+
+          if [ -z "$PR_URL" ]; then
+            echo "[error] could not create or find a PR for ${BRANCH}" >&2
+            exit 1
+          fi
+
+          for i in 1 2 3; do
+            gh pr merge "$PR_URL" --merge && exit 0
+            sleep $((i * 15))
+          done
+
+          echo "[error] could not merge ${PR_URL}" >&2
+          exit 1
