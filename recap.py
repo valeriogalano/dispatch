@@ -41,6 +41,7 @@ Raggruppa per tema logico, non per repository. Se ci sono repository correlati, 
 Usa solo i link già presenti nel digest. Non aggiungere URL GitHub per progetti che nel digest non hanno un link.
 Quando citi un progetto/repository, usa il link alla pagina del progetto indicato nella sua sezione del digest; non usare URL /commits né link a commit specifici come link del progetto.
 Ignora i commit di pubblicazione episodi (mp3, metadati episodio, copertine, trascrizioni, soundbite, script).
+La sezione "## Aggiornamenti manuali" non contiene commit: sono cose fatte da Valerio fuori da git (episodi del podcast, articoli, release, altro). Trattale come il resto del materiale e non escluderle mai.
 {blog_instruction}
 
 {digest}
@@ -69,6 +70,7 @@ Non elencare i commit uno per uno: sintetizza, racconta, dai senso al lavoro fat
 Usa solo i link già presenti nel digest. Non aggiungere URL GitHub per progetti che nel digest non hanno un link.
 Quando citi un progetto/repository, usa il link alla pagina del progetto indicato nella sua sezione del digest; non usare URL /commits né link a commit specifici come link del progetto.
 Ignora i commit di pubblicazione episodi (mp3, metadati episodio, copertine, trascrizioni, soundbite, script).
+La sezione "## Aggiornamenti manuali" non contiene commit: sono cose fatte da Valerio fuori da git (episodi del podcast, articoli, release, altro). Trattale come il resto del materiale e non escluderle mai.
 Se il periodo è stato quieto o dopo l'esclusione non rimane nulla di significativo, può essere l'occasione per una riflessione più ampia.
 
 {digest}

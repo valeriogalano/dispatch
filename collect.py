@@ -18,6 +18,7 @@ HOSTS = {
 }
 
 NO_COMMITS_MARKER = "_No commits found in this period._"
+MANUAL_HEADING = "## Aggiornamenti manuali"
 
 CATEGORY_MAP = {
     "feat": "Added",
@@ -152,7 +153,30 @@ def repo_url(repo: dict) -> str:
     return f"{repo_host(repo)['web']}/{repo['slug']}"
 
 
-def build_digest(repos: list[dict], token: str, since: datetime, until: datetime, append: bool = False) -> str:
+def load_manual_entries(manual_dir: str, since: datetime, until: datetime) -> list[str]:
+    """Read manual notes for things done outside git, one file per day: manual/YYYY-MM-DD.md."""
+    entries = []
+    for path in sorted(Path(manual_dir).glob("[0-9]*.md")):
+        try:
+            entry_date = datetime.fromisoformat(path.stem).replace(tzinfo=timezone.utc)
+        except ValueError:
+            print(f"[warn] skipping manual note with unparsable date: {path}", file=sys.stderr)
+            continue
+        if since.date() <= entry_date.date() <= until.date():
+            text = path.read_text(encoding="utf-8").strip()
+            if text:
+                entries.append(text)
+    return entries
+
+
+def build_digest(
+    repos: list[dict],
+    token: str,
+    since: datetime,
+    until: datetime,
+    append: bool = False,
+    manual_dir: str = "manual",
+) -> str:
     lines = []
 
     if not append:
@@ -191,6 +215,15 @@ def build_digest(repos: list[dict], token: str, since: datetime, until: datetime
                         lines.append(f"  {body_line}")
             lines.append("")
 
+    manual_entries = load_manual_entries(manual_dir, since, until)
+    if manual_entries:
+        any_content = True
+        lines.append(MANUAL_HEADING)
+        lines.append("")
+        for entry in manual_entries:
+            lines.append(entry)
+            lines.append("")
+
     if not any_content and not append:
         lines.append(NO_COMMITS_MARKER)
         lines.append("")
@@ -206,6 +239,7 @@ def main():
     parser.add_argument("--append", action="store_true", help="Append repo sections to existing digest file")
     parser.add_argument("--config", default="config.txt", help="Path to config file (default: config.txt)")
     parser.add_argument("--output-dir", default="output", help="Output directory (default: output)")
+    parser.add_argument("--manual-dir", default="manual", help="Directory of manual notes (default: manual)")
     args = parser.parse_args()
 
     gh_token = os.environ.get("GH_TOKEN")
@@ -226,7 +260,9 @@ def main():
         sys.exit(0)
 
     print(f"Collecting commits from {len(repos)} repo(s) between {since_dt.date()} and {until_dt.date()}…", file=sys.stderr)
-    digest = build_digest(repos, gh_token, since=since_dt, until=until_dt, append=args.append)
+    digest = build_digest(
+        repos, gh_token, since=since_dt, until=until_dt, append=args.append, manual_dir=args.manual_dir
+    )
 
     # nothing happened in this window: write no file, so the workflows downstream
     # find nothing to publish and stop the chain without failing

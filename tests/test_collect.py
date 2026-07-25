@@ -88,3 +88,33 @@ class EmptyPeriodTests(unittest.TestCase):
             with patch.object(sys, "argv", argv), patch.dict("os.environ", {"GH_TOKEN": "token"}):
                 collect.main()
             self.assertEqual([], list(Path(tmp).glob("digest-*.md")))
+
+
+class ManualEntriesTests(unittest.TestCase):
+    @patch("collect.is_repo_public", return_value=True)
+    @patch("collect.fetch_commits", return_value=[])
+    def test_manual_note_in_the_window_makes_a_digest_even_without_commits(self, _commits, _public):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "2026-07-22.md").write_text("Pubblicato l'episodio 150 del podcast.")
+            (Path(tmp) / "2026-01-01.md").write_text("Vecchia nota fuori finestra.")
+            (Path(tmp) / "README.md").write_text("istruzioni, non una nota")
+
+            digest = collect.build_digest(
+                [{"slug": "owner/project", "name": "Project", "link": None}],
+                token="token",
+                since=datetime(2026, 7, 18, tzinfo=timezone.utc),
+                until=datetime(2026, 7, 24, tzinfo=timezone.utc),
+                manual_dir=tmp,
+            )
+
+        self.assertIn("Pubblicato l'episodio 150", digest)
+        self.assertNotIn("Vecchia nota", digest)
+        self.assertNotIn("istruzioni", digest)
+        self.assertNotIn(collect.NO_COMMITS_MARKER, digest)
+
+
+if __name__ == "__main__":
+    unittest.main()
