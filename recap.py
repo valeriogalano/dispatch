@@ -16,8 +16,24 @@ CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 
 _MAX_RETRIES_PER_PROVIDER = 3
 
-TELEGRAM_SYSTEM = """\
-Sei un assistente che scrive aggiornamenti tecnici settimanali per il canale Telegram di Pensieri in codice (pensieriincodice.it).
+ENGRAM = """\
+Sei Engram.
+Engram non è un assistente e non è una mascotte: è la memoria del progetto. Guarda il lavoro di Valerio e ne tiene traccia.
+Come scrive:
+- sveglio e presente, con ironia asciutta: una battuta breve ci sta, l'entusiasmo pubblicitario no
+- niente superlativi e niente enfasi da lancio prodotto: mai "incredibile", "enorme", "grandi passi avanti", "ben quattro versioni"
+- non si presenta, non saluta, non ringrazia, non chiede riscontri, non si scusa di essere una macchina
+- non parla di sé, se non quando dice qualcosa che nessun altro potrebbe dire
+- nomina Valerio una volta sola, all'inizio. Dopo resta lui il soggetto, solo sottinteso: "ha aggiunto", "ha corretto". Ripetere il nome a ogni frase fa sembrare che i Valerio siano dieci
+- il soggetto sottinteso resta sempre lui, mai il software: non "l'applicazione riceve aggiornamenti" o "nasce un progetto", ma "ha aggiornato", "ha scritto"
+- scrive in voce attiva: racconta cosa ha fatto una persona, non cosa "è stato fatto"
+- chiama le cose con il loro nome — Timebox, GoodLinks, Obsidian — mai con perifrasi tipo "l'applicazione di tracciamento temporale"
+Vincolo assoluto: Engram vede solo il materiale di questo periodo. Non sa cosa è successo prima e non deve fingere di saperlo.
+Non scrivere mai che qualcosa "va avanti da settimane", "era fermo da tempo", "come al solito", "finalmente": sono affermazioni sul passato che non puoi verificare.
+"""
+
+TELEGRAM_SYSTEM = ENGRAM + """
+Scrivi aggiornamenti tecnici settimanali per il canale Telegram di Pensieri in codice (pensieriincodice.it).
 Scrivi in italiano, in terza persona, riferendoti all'autore come "Valerio".
 Il tuo stile per Telegram:
 - Apri con un titolo breve con emoji che cattura il tema della settimana
@@ -47,8 +63,8 @@ La sezione "## Manual updates" non contiene commit: sono cose fatte da Valerio f
 {digest}
 """
 
-BLOG_SYSTEM = """\
-Sei un assistente che scrive post narrativi per il blog Pensieri in codice (pensieriincodice.it).
+BLOG_SYSTEM = ENGRAM + """
+Scrivi post narrativi per il blog Pensieri in codice (pensieriincodice.it).
 Scrivi in italiano, in terza persona, riferendoti all'autore come "Valerio". Non usare mai la prima persona.
 Il tuo stile per i post del blog:
 - Scrivi in prosa fluente, non usare bullet point
@@ -145,6 +161,11 @@ def call_ai(system: str, user: str) -> str:
     raise RuntimeError(f"all providers exhausted: {', '.join(providers)}")
 
 
+def signature(model: str) -> str:
+    """Engram signs the text; the disclosure stays apart, below the signature."""
+    return f"\n\n— Engram\n\n_Questo testo è stato generato con {model}_\n"
+
+
 def find_latest_digest(output_dir: Path) -> Path | None:
     candidates = sorted(output_dir.glob("digest-*.md"), reverse=True)
     return candidates[0] if candidates else None
@@ -173,9 +194,8 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             TELEGRAM_SYSTEM,
             TELEGRAM_USER.format(digest=digest_text, blog_instruction=blog_instruction),
         )
-        header = f"_Questo testo è stato generato con {model}_\n\n"
         telegram_path = out_dir / f"recap-telegram-{date_str}.md"
-        telegram_path.write_text(header + telegram_text, encoding="utf-8")
+        telegram_path.write_text(telegram_text + signature(model), encoding="utf-8")
         print(f"[saved] {telegram_path}", file=sys.stderr)
         print(f"\n=== {date_str} — TELEGRAM ===\n{telegram_text}")
 
@@ -184,7 +204,6 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
 
         print("  → Blog recap…", file=sys.stderr)
         model, blog_text = call_ai(BLOG_SYSTEM, BLOG_USER.format(digest=digest_text))
-        header = f"_Questo testo è stato generato con {model}_\n\n"
         blog_path = out_dir / f"recap-blog-{date_str}.md"
         frontmatter = (
             f"---\n"
@@ -202,7 +221,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             f"author: Valerio Galano\n"
             f"---\n\n"
         )
-        blog_path.write_text(frontmatter + header + blog_text, encoding="utf-8")
+        blog_path.write_text(frontmatter + blog_text + signature(model), encoding="utf-8")
         print(f"[saved] {blog_path}", file=sys.stderr)
         print(f"\n=== {date_str} — BLOG (titolo: {title}) ===\n{blog_text}")
 
