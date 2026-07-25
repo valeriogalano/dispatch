@@ -5,7 +5,7 @@ _Questo testo è stato generato con claude:claude-haiku-4-5-20251001_
 Valerio ha completato una trasformazione importante del flusso di pubblicazione e introdotto numerosi miglioramenti all'app di time tracking.
 
 ## 📚 Pipeline GoodLinks: archiviazione e automazione completa
-[**GoodLinks Publisher**](https://codeberg.org/valeriogalano/goodlinks-publisher) è passato da prototipo a sistema robusto di fan-out verso tre canali (Mastodon, Telegram, blog Hugo). La novità principale è l'**archiviazione automatica nel vault Obsidian**: un nuovo job replica la funzione del plugin Readwise creando/aggiornando note con metadata, highlights e contenuto full-text estratto via trafilatura. L'archivio usa il vault come source of truth con matching idempotente su URL normalizzati.
+[**GoodLinks Publisher**](https://github.com/valeriogalano/goodlinks-publisher) è passato da prototipo a sistema robusto di fan-out verso tre canali (Mastodon, Telegram, blog Hugo). La novità principale è l'**archiviazione automatica nel vault Obsidian**: un nuovo job replica la funzione del plugin Readwise creando/aggiornando note con metadata, highlights e contenuto full-text estratto via trafilatura. L'archivio usa il vault come source of truth con matching idempotente su URL normalizzati.
 
 Accanto: **backup automatico dello stato** su Codeberg (published_ids.json versionato in git), **notifiche macOS su errori** eseguiti da launchd, **finestra di 7 giorni** sugli articoli e **schedulazione diurna** (8:20–20:20, ogni ora). L'output Hugo ora scrive direttamente su GitHub API nel repo del blog, garantendo il trigger della CI. Il placeholder `{notes}` estrae il primo highlight anziché il summary.
 

@@ -10,7 +10,7 @@ Questa settimana Valerio ha lavorato intensamente su diversi fronti, concentrand
 - **Storicizzazione**: La vista "Nel tempo" ora legge il pianificato reale storicizzato invece del template corrente.
 - **Test automatizzati**: Introdotti i test di unità e componenti nel renderer con Vitest e React Testing Library.
 
-🔖 **GoodLinks Publisher** (https://codeberg.org/valeriogalano/goodlinks-publisher)
+🔖 **GoodLinks Publisher** (https://github.com/valeriogalano/goodlinks-publisher)
 - **Nuova pipeline**: Creato un tool per pubblicare link da GoodLinks verso Mastodon, Telegram e blog Hugo tramite API GitHub.
 - **Funzionalità extra**: Aggiunto il backup automatico dello stato su Codeberg, notifiche macOS in caso di errore, filtri temporali e gestione degli highlight.
 
