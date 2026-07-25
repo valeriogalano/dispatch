@@ -20,7 +20,7 @@ valeriogalano/podcast-rss-to-linkedin | Podcast RSS to LinkedIn
 valeriogalano/podcast-quiz-to-telegram | Podcast Quiz to Telegram
 
 # GoodLinks
-codeberg:valeriogalano/goodlinks-publisher | GoodLinks Publisher
+valeriogalano/goodlinks-publisher | GoodLinks Publisher
 
 # Readwise to social
 valeriogalano/readwise-to-telegram | Readwise to Telegram
