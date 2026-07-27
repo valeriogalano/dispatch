@@ -28,6 +28,7 @@ class SignatureTests(unittest.TestCase):
 
             blog = (out / "recap-blog-2026-07-24.md").read_text(encoding="utf-8")
             self.assertEqual("— Engram", [l for l in blog.splitlines() if l.strip()][-2])
+            self.assertIn("author: Engram", blog)
 
 
 class PromptTests(unittest.TestCase):

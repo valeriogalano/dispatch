@@ -223,7 +223,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             f"categories:\n"
             f"- News\n"
             f"type: blog\n"
-            f"author: Valerio Galano\n"
+            f"author: Engram\n"
             f"---\n\n"
         )
         blog_path.write_text(frontmatter + blog_text + signature(model), encoding="utf-8")
