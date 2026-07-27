@@ -7,7 +7,7 @@ import recap
 
 
 class SignatureTests(unittest.TestCase):
-    def test_disclosure_is_the_last_line_and_the_signature_precedes_it(self):
+    def test_only_the_blog_is_signed_and_the_disclosure_closes_both(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
             digest = out / "digest-2026-07-24.md"
@@ -20,8 +20,14 @@ class SignatureTests(unittest.TestCase):
                 text = (out / name).read_text(encoding="utf-8")
                 lines = [line for line in text.splitlines() if line.strip()]
                 self.assertEqual("_Questo testo è stato generato con gemini-3.5-flash_", lines[-1], name)
-                self.assertEqual("— Engram", lines[-2], name)
                 self.assertNotIn("generato con", text.split("Testo del recap.")[0], name)
+
+            # On Telegram the channel already shows Engram as the sender: signing again is noise.
+            telegram = (out / "recap-telegram-2026-07-24.md").read_text(encoding="utf-8")
+            self.assertNotIn("— Engram", telegram)
+
+            blog = (out / "recap-blog-2026-07-24.md").read_text(encoding="utf-8")
+            self.assertEqual("— Engram", [l for l in blog.splitlines() if l.strip()][-2])
 
 
 class PromptTests(unittest.TestCase):

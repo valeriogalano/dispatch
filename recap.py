@@ -161,9 +161,14 @@ def call_ai(system: str, user: str) -> str:
     raise RuntimeError(f"all providers exhausted: {', '.join(providers)}")
 
 
+def disclosure(model: str) -> str:
+    """The disclosure travels with every recap, signed or not."""
+    return f"\n\n_Questo testo è stato generato con {model}_\n"
+
+
 def signature(model: str) -> str:
-    """Engram signs the text; the disclosure stays apart, below the signature."""
-    return f"\n\n— Engram\n\n_Questo testo è stato generato con {model}_\n"
+    """Engram signs the blog post; on Telegram the channel already shows the sender."""
+    return f"\n\n— Engram" + disclosure(model)
 
 
 def find_latest_digest(output_dir: Path) -> Path | None:
@@ -195,7 +200,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             TELEGRAM_USER.format(digest=digest_text, blog_instruction=blog_instruction),
         )
         telegram_path = out_dir / f"recap-telegram-{date_str}.md"
-        telegram_path.write_text(telegram_text + signature(model), encoding="utf-8")
+        telegram_path.write_text(telegram_text + disclosure(model), encoding="utf-8")
         print(f"[saved] {telegram_path}", file=sys.stderr)
         print(f"\n=== {date_str} — TELEGRAM ===\n{telegram_text}")
 
