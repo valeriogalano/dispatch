@@ -12,89 +12,13 @@ on:
     types: [completed]
 
 jobs:
-  # an empty period is a handled case, not a failure: no digest for today means
-  # collect.py found nothing, so the chain stops here without a red run
-  check:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    outputs:
-      proceed: ${{ steps.digest.outputs.proceed }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Look for today's digest
-        id: digest
-        run: |
-          FILE="output/digest-$(date -u '+%Y-%m-%d').md"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -f "$FILE" ]; then
-            echo "proceed=yes" >> "$GITHUB_OUTPUT"
-          else
-            echo "[info] no ${FILE}: nothing new in this period, stopping the chain"
-            echo "proceed=no" >> "$GITHUB_OUTPUT"
-          fi
-
-  recap:
-    runs-on: ubuntu-latest
-    needs: check
-    if: ${{ needs.check.outputs.proceed == 'yes' }}
+  generate:
     permissions:
       contents: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Create virtualenv and install dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install google-genai anthropic
-
-      - name: Build recap arguments
-        id: args
-        run: |
-          INPUT="${{ github.event.inputs.digests }}"
-          if [ -z "$INPUT" ]; then
-            echo "flags=" >> "$GITHUB_OUTPUT"
-            DATE=$(ls output/digest-*.md 2>/dev/null | sort | tail -1 | sed 's|.*digest-||' | sed 's|\.md||')
-            # a re-run must not pay for the AI again, nor rewrite a recap already published
-            if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -f "output/recap-blog-${DATE}.md" ]; then
-              echo "[info] recap-blog-${DATE}.md already generated, keeping it"
-              echo "skip=yes" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            FLAGS=""
-            IFS=',' read -ra DATES <<< "$INPUT"
-            for DATE in "${DATES[@]}"; do
-              DATE=$(echo "$DATE" | tr -d ' ')
-              FILE="output/digest-${DATE}.md"
-              if [ ! -f "$FILE" ]; then
-                echo "[error] digest not found: $FILE" >&2
-                exit 1
-              fi
-              FLAGS="$FLAGS --digest $FILE"
-            done
-            echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Run recap.py
-        if: ${{ steps.args.outputs.skip != 'yes' }}
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: .venv/bin/python recap.py --format blog ${{ steps.args.outputs.flags }}
-
-      - name: Commit recap files
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/recap-blog-*.md
-          git diff --cached --quiet || git commit -m "chore: add blog recap $(date -u '+%Y-%m-%d')"
-          git pull --rebase
-          git push
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/_generate-recap.yml
+    secrets: inherit
+    with:
+      format: blog
+      digests: ${{ github.event.inputs.digests || '' }}
+      manual: ${{ github.event_name == 'workflow_dispatch' }}

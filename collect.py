@@ -17,6 +17,9 @@ HOSTS = {
     "codeberg": {"api": "https://codeberg.org/api/v1", "web": "https://codeberg.org", "page_size": 50},
 }
 
+MAX_RATE_LIMIT_SLEEP = 3600
+MAX_RATE_LIMIT_WAITS = 5
+
 NO_COMMITS_MARKER = "_No commits found in this period._"
 MANUAL_HEADING = "## Manual updates"
 
@@ -51,6 +54,23 @@ def load_config(path: str) -> list[dict]:
     return repos
 
 
+def rate_limit_wait(resp) -> int | None:
+    """Seconds to wait, or None if this response is not a rate limit.
+
+    A 403 without rate-limit headers is a permission problem: retrying it forever
+    would hang the job instead of failing it.
+    """
+    retry_after = resp.headers.get("Retry-After")
+    exhausted = resp.headers.get("X-RateLimit-Remaining") == "0"
+    if resp.status_code not in (403, 429) or not (retry_after or exhausted):
+        return None
+    if retry_after:
+        wait = int(retry_after)
+    else:
+        wait = int(resp.headers.get("X-RateLimit-Reset", 0)) - int(time.time())
+    return max(1, min(wait, MAX_RATE_LIMIT_SLEEP))
+
+
 def api_get(url: str, token: str | None, params: dict = None, page_size: int = 100) -> list | dict:
     headers = {
         "Accept": "application/vnd.github+json",
@@ -60,13 +80,16 @@ def api_get(url: str, token: str | None, params: dict = None, page_size: int = 1
         headers["Authorization"] = f"Bearer {token}"
     results = []
     page = 1
+    waits = 0
     while True:
         # per_page is GitHub's param, limit is Forgejo's; each API ignores the other
         p = {"per_page": page_size, "limit": page_size, "page": page, **(params or {})}
         resp = requests.get(url, headers=headers, params=p, timeout=30)
-        if resp.status_code == 403:
-            reset = int(resp.headers.get("X-RateLimit-Reset", time.time() + 60))
-            wait = max(1, reset - int(time.time()))
+        wait = rate_limit_wait(resp)
+        if wait is not None:
+            if waits >= MAX_RATE_LIMIT_WAITS:
+                resp.raise_for_status()
+            waits += 1
             print(f"[rate-limit] sleeping {wait}s", file=sys.stderr)
             time.sleep(wait)
             continue
@@ -85,11 +108,11 @@ def api_get(url: str, token: str | None, params: dict = None, page_size: int = 1
 
 
 def categorize(message: str) -> str:
-    lower = message.lower()
-    if "breaking change" in lower or "!" in message.split(":")[0]:
+    # without a colon there is no conventional prefix: a "!" is just punctuation
+    head = message.split(":")[0] if ":" in message else ""
+    if "breaking change" in message.lower() or "!" in head:
         return "Breaking"
-    prefix = message.split(":")[0].split("(")[0].lower()
-    return CATEGORY_MAP.get(prefix, "Changed")
+    return CATEGORY_MAP.get(head.split("(")[0].lower(), "Changed")
 
 
 def extract_author(item: dict) -> str:
@@ -162,7 +185,8 @@ def load_manual_entries(manual_dir: str, since: datetime, until: datetime) -> li
         except ValueError:
             print(f"[warn] skipping manual note with unparsable date: {path}", file=sys.stderr)
             continue
-        if since.date() <= entry_date.date() <= until.date():
+        # since is exclusive: it was the "until" of the previous run, already published
+        if since.date() < entry_date.date() <= until.date():
             text = path.read_text(encoding="utf-8").strip()
             if text:
                 entries.append(text)

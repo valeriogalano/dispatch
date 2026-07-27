@@ -44,6 +44,10 @@ The project uses a chain of workflows to automate the entire process:
 4. **Publish Recap to Website**: Triggered after the blog recap is generated. Copies the file to the website repo, opens and merges a PR.
 5. **Publish Recap to Telegram**: Triggered after the Telegram recap is generated. Sends the message via bot.
 
+Both recap workflows are thin callers of `_generate-recap.yml`, which holds the shared steps and takes the format as an input. **Tests** runs the unit tests on every push and pull request.
+
+Digests, recaps and sent markers older than 52 weeks are pruned from `output/` by the weekly job; git history keeps them.
+
 ### Manual Triggers
 
 All workflows can be triggered manually via the "Actions" tab:
@@ -89,7 +93,7 @@ cp .env.example .env  # fill in the values
 # First time only: create the virtualenv
 python -m venv .venv
 source .venv/bin/activate
-pip install requests google-genai
+pip install -r requirements.txt
 ```
 
 ```bash

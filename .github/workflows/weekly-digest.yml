@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install requests
+          .venv/bin/pip install -r requirements.txt
 
       - name: Determine days parameter
         id: params
@@ -49,11 +49,19 @@ jobs:
         run: |
           .venv/bin/python collect.py --days ${{ steps.params.outputs.days }}
 
+      # output/ is committed and would grow forever; git history keeps whatever is pruned
+      - name: Prune output older than a year
+        run: |
+          for PREFIX in digest recap-blog recap-telegram; do
+            ls output/${PREFIX}-*.md 2>/dev/null | sort | head -n -52 | xargs -r rm -v
+          done
+          ls output/sent/*.sent 2>/dev/null | sort | head -n -52 | xargs -r rm -v
+
       - name: Commit digest file
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/
+          git add -A output/
           git diff --cached --quiet || git commit -m "chore: add weekly digest $(date -u '+%Y-%m-%d')"
           git pull --rebase
           git push

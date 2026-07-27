@@ -113,5 +113,59 @@ class ManualEntriesTests(unittest.TestCase):
         self.assertNotIn(collect.NO_COMMITS_MARKER, digest)
 
 
+class RateLimitTests(unittest.TestCase):
+    class FakeResponse:
+        def __init__(self, status_code, headers):
+            self.status_code = status_code
+            self.headers = headers
+
+    def test_forbidden_without_rate_limit_headers_is_not_a_wait(self):
+        # a permission 403 retried forever would hang the job instead of failing it
+        resp = self.FakeResponse(403, {})
+        self.assertIsNone(collect.rate_limit_wait(resp))
+
+    def test_exhausted_quota_waits_until_reset(self):
+        import time
+        resp = self.FakeResponse(403, {
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": str(int(time.time()) + 30),
+        })
+        self.assertIn(collect.rate_limit_wait(resp), range(25, 31))
+
+    def test_secondary_limit_honours_retry_after(self):
+        resp = self.FakeResponse(429, {"Retry-After": "12"})
+        self.assertEqual(12, collect.rate_limit_wait(resp))
+
+    def test_wait_is_capped(self):
+        resp = self.FakeResponse(429, {"Retry-After": "999999"})
+        self.assertEqual(collect.MAX_RATE_LIMIT_SLEEP, collect.rate_limit_wait(resp))
+
+
+class CategorizeTests(unittest.TestCase):
+    def test_bang_outside_a_conventional_prefix_is_not_breaking(self):
+        self.assertEqual("Changed", collect.categorize("fix crash on empty input!"))
+
+    def test_bang_in_the_prefix_is_breaking(self):
+        self.assertEqual("Breaking", collect.categorize("feat!: drop python 3.9"))
+
+    def test_scoped_prefix_still_maps(self):
+        self.assertEqual("Added", collect.categorize("feat(collect): add codeberg support"))
+
+
+class ManualWindowTests(unittest.TestCase):
+    def test_note_dated_on_since_belongs_to_the_previous_window(self):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "2026-07-18.md").write_text("nota del giorno di confine")
+            entries = collect.load_manual_entries(
+                tmp,
+                since=datetime(2026, 7, 18, tzinfo=timezone.utc),
+                until=datetime(2026, 7, 25, tzinfo=timezone.utc),
+            )
+        self.assertEqual([], entries)
+
+
 if __name__ == "__main__":
     unittest.main()

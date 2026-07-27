@@ -39,5 +39,30 @@ class PromptTests(unittest.TestCase):
             self.assertIn("non deve fingere di saperlo", prompt)
 
 
+class ProviderFailoverTests(unittest.TestCase):
+    def test_a_provider_without_its_key_is_skipped_without_retrying(self):
+        # a missing key will not appear on the third attempt: no sleeping on it
+        calls = []
+
+        def fake_claude(key, system, user):
+            calls.append(key)
+            return "risposta"
+
+        env = {"AI_PROVIDER": "google,anthropic", "ANTHROPIC_API_KEY": "k"}
+        with patch.dict("os.environ", env, clear=True), \
+                patch.dict(recap._PROVIDERS, {"anthropic": ("ANTHROPIC_API_KEY", recap.CLAUDE_MODEL, fake_claude)}), \
+                patch.object(recap.time, "sleep", side_effect=AssertionError("must not sleep")):
+            model, text = recap.call_ai("system", "user")
+
+        self.assertEqual(recap.CLAUDE_MODEL, model)
+        self.assertEqual("risposta", text)
+        self.assertEqual(["k"], calls)
+
+    def test_all_providers_unusable_raises(self):
+        with patch.dict("os.environ", {"AI_PROVIDER": "google"}, clear=True):
+            with self.assertRaises(RuntimeError):
+                recap.call_ai("system", "user")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,121 @@
+name: Generate Recap (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      format:
+        description: "Recap format: blog or telegram"
+        required: true
+        type: string
+      digests:
+        description: "Digest dates, comma-separated (YYYY-MM-DD,...); leave empty for the latest"
+        required: false
+        type: string
+        default: ""
+      manual:
+        description: "True when the caller was dispatched by hand: skip the empty-period guard"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  # an empty period is a handled case, not a failure: no digest for today means
+  # collect.py found nothing, so the chain stops here without a red run
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.digest.outputs.proceed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Look for today's digest
+        id: digest
+        run: |
+          FILE="output/digest-$(date -u '+%Y-%m-%d').md"
+          if [ "${{ inputs.manual }}" = "true" ] || [ -f "$FILE" ]; then
+            echo "proceed=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "[info] no ${FILE}: nothing new in this period, stopping the chain"
+            echo "proceed=no" >> "$GITHUB_OUTPUT"
+          fi
+
+  recap:
+    runs-on: ubuntu-latest
+    needs: check
+    if: ${{ needs.check.outputs.proceed == 'yes' }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Create virtualenv and install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+
+      - name: Build recap arguments
+        id: args
+        env:
+          FORMAT: ${{ inputs.format }}
+          INPUT: ${{ inputs.digests }}
+          MANUAL: ${{ inputs.manual }}
+        run: |
+          if [ -z "$INPUT" ]; then
+            echo "flags=" >> "$GITHUB_OUTPUT"
+            DATE=$(ls output/digest-*.md 2>/dev/null | sort | tail -1 | sed 's|.*digest-||' | sed 's|\.md||')
+            # a re-run must not pay for the AI again, nor rewrite a recap already published
+            if [ "$MANUAL" != "true" ] && [ -f "output/recap-${FORMAT}-${DATE}.md" ]; then
+              echo "[info] recap-${FORMAT}-${DATE}.md already generated, keeping it"
+              echo "skip=yes" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            FLAGS=""
+            FIRST_DATE=""
+            IFS=',' read -ra DATES <<< "$INPUT"
+            for D in "${DATES[@]}"; do
+              D=$(echo "$D" | tr -d ' ')
+              FILE="output/digest-${D}.md"
+              if [ ! -f "$FILE" ]; then
+                echo "[error] digest not found: $FILE" >&2
+                exit 1
+              fi
+              FLAGS="$FLAGS --digest $FILE"
+              [ -z "$FIRST_DATE" ] && FIRST_DATE="$D"
+            done
+            DATE="$FIRST_DATE"
+            echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
+          fi
+          echo "blog_url=https://pensieriincodice.it/blog/${DATE}-recap/" >> "$GITHUB_OUTPUT"
+
+      - name: Run recap.py
+        if: ${{ steps.args.outputs.skip != 'yes' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          .venv/bin/python recap.py \
+            --format "${{ inputs.format }}" \
+            --blog-url "${{ steps.args.outputs.blog_url }}" \
+            ${{ steps.args.outputs.flags }}
+
+      - name: Commit recap files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "output/recap-${{ inputs.format }}-"*.md
+          git diff --cached --quiet || git commit -m "chore: add ${{ inputs.format }} recap $(date -u '+%Y-%m-%d')"
+          git pull --rebase
+          git push

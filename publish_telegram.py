@@ -16,6 +16,35 @@ from pathlib import Path
 
 _LINK_RE = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
 
+# Telegram rejects a sendMessage over 4096 characters with a 400 that the plain-text
+# fallback cannot rescue; leave room for the HTML tags added on conversion
+TELEGRAM_LIMIT = 3500
+
+
+def split_message(text: str, limit: int = TELEGRAM_LIMIT) -> list[str]:
+    """Split the Markdown source on blank lines, then on newlines if a block is still too long."""
+    chunks: list[str] = []
+    current = ""
+    for block in text.split("\n\n"):
+        candidate = f"{current}\n\n{block}" if current else block
+        if len(candidate) <= limit:
+            current = candidate
+            continue
+        if current:
+            chunks.append(current)
+        current = block
+        while len(current) > limit:
+            cut = current.rfind("\n", 0, limit)
+            if cut <= 0:
+                cut = current.rfind(" ", 0, limit)
+            if cut <= 0:
+                cut = limit
+            chunks.append(current[:cut].rstrip())
+            current = current[cut:].lstrip("\n ")
+    if current:
+        chunks.append(current)
+    return chunks or [""]
+
 
 def markdown_to_telegram_html(text: str) -> str:
     escaped = html.escape(text, quote=False)
@@ -97,23 +126,37 @@ def main() -> int:
 
     source = Path(args.file).read_text(encoding="utf-8")
 
-    response = send_message(token, chat_id, markdown_to_telegram_html(source), parse_mode="HTML")
+    # ponytail: on a partial failure the earlier parts stay sent and no marker is
+    # written, so a re-run duplicates them. Recaps are one chunk in practice.
+    chunks = split_message(source)
+    if len(chunks) > 1:
+        print(f"[info] recap too long for one message, splitting into {len(chunks)} parts")
+
+    for index, chunk in enumerate(chunks, start=1):
+        if not send_chunk(token, chat_id, chunk, index, len(chunks)):
+            return 1
+
+    write_marker(marker)
+    return 0
+
+
+def send_chunk(token: str, chat_id: str, chunk: str, index: int, total: int) -> bool:
+    label = f"part {index}/{total}" if total > 1 else "message"
+
+    response = send_message(token, chat_id, markdown_to_telegram_html(chunk), parse_mode="HTML")
     if response.get("ok"):
-        write_marker(marker)
-        print("[sent] Telegram message sent with HTML formatting")
-        return 0
+        print(f"[sent] Telegram {label} sent with HTML formatting")
+        return True
 
-    print(f"[warn] Telegram HTML send failed: {response}", file=sys.stderr)
+    print(f"[warn] Telegram HTML send failed ({label}): {response}", file=sys.stderr)
     if should_retry_plain(response):
-        fallback = send_message(token, chat_id, markdown_to_plain_text(source))
+        fallback = send_message(token, chat_id, markdown_to_plain_text(chunk))
         if fallback.get("ok"):
-            write_marker(marker)
-            print("[sent] Telegram message sent as plain text after parse fallback")
-            return 0
-        print(f"[error] Telegram plain-text fallback failed: {fallback}", file=sys.stderr)
-        return 1
+            print(f"[sent] Telegram {label} sent as plain text after parse fallback")
+            return True
+        print(f"[error] Telegram plain-text fallback failed ({label}): {fallback}", file=sys.stderr)
 
-    return 1
+    return False
 
 
 if __name__ == "__main__":

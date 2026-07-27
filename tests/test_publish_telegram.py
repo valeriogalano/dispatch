@@ -27,6 +27,25 @@ class MarkdownToPlainTextTests(unittest.TestCase):
         self.assertEqual("Vedi Dev updates: https://github.com/owner/repo", result)
 
 
+class SplitMessageTests(unittest.TestCase):
+    def test_short_text_stays_one_message(self):
+        self.assertEqual(["ciao"], publish_telegram.split_message("ciao"))
+
+    def test_long_text_splits_on_blank_lines_and_keeps_every_chunk_within_the_limit(self):
+        text = "\n\n".join(f"paragrafo {i} " + "x" * 300 for i in range(20))
+        chunks = publish_telegram.split_message(text)
+        self.assertGreater(len(chunks), 1)
+        for chunk in chunks:
+            self.assertLessEqual(len(chunk), publish_telegram.TELEGRAM_LIMIT)
+        self.assertIn("paragrafo 19", chunks[-1])
+
+    def test_a_single_oversized_block_is_still_split(self):
+        chunks = publish_telegram.split_message("riga " * 2000)
+        self.assertGreater(len(chunks), 1)
+        for chunk in chunks:
+            self.assertLessEqual(len(chunk), publish_telegram.TELEGRAM_LIMIT)
+
+
 class AlreadySentTests(unittest.TestCase):
     def test_second_run_does_not_send_again(self):
         import os

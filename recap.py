@@ -8,9 +8,6 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from google import genai
-from google.genai import errors as genai_errors
-
 GEMINI_MODEL = "gemini-3.5-flash"
 CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 
@@ -94,6 +91,8 @@ Se il periodo è stato quieto o dopo l'esclusione non rimane nulla di significat
 
 
 def _call_gemini(api_key: str, system: str, user: str) -> str:
+    # imported lazily so that running with AI_PROVIDER=anthropic needs no google-genai
+    from google import genai
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=GEMINI_MODEL,
@@ -124,33 +123,33 @@ def _get_providers() -> list[str]:
     return providers or ["google", "anthropic"]
 
 
-def call_ai(system: str, user: str) -> str:
+_PROVIDERS = {
+    "google": ("GEMINI_API_KEY", GEMINI_MODEL, _call_gemini),
+    "gemini": ("GEMINI_API_KEY", GEMINI_MODEL, _call_gemini),
+    "anthropic": ("ANTHROPIC_API_KEY", CLAUDE_MODEL, _call_claude),
+    "claude": ("ANTHROPIC_API_KEY", CLAUDE_MODEL, _call_claude),
+}
+
+
+def call_ai(system: str, user: str) -> tuple[str, str]:
+    """Return (model, text) from the first provider that answers."""
     providers = _get_providers()
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
 
     for provider in providers:
+        if provider not in _PROVIDERS:
+            print(f"  → unknown provider: {provider}, skipping", file=sys.stderr)
+            continue
+        env_var, model, call = _PROVIDERS[provider]
+        # a missing key will not appear on the third attempt: fail over now
+        key = os.environ.get(env_var, "")
+        if not key:
+            print(f"  → {provider}: {env_var} not set, skipping", file=sys.stderr)
+            continue
+
         print(f"  → using provider: {provider}", file=sys.stderr)
         for attempt in range(1, _MAX_RETRIES_PER_PROVIDER + 1):
             try:
-                if provider in {"google", "gemini"}:
-                    if not gemini_key:
-                        raise RuntimeError("GEMINI_API_KEY not set")
-                    result = _call_gemini(gemini_key, system, user)
-                    return GEMINI_MODEL, result
-                elif provider in {"anthropic", "claude"}:
-                    if not anthropic_key:
-                        raise RuntimeError("ANTHROPIC_API_KEY not set")
-                    result = _call_claude(anthropic_key, system, user)
-                    return CLAUDE_MODEL, result
-                else:
-                    raise RuntimeError(f"unknown provider: {provider}")
-            except genai_errors.ServerError as e:
-                print(f"  → Gemini error (attempt {attempt}/{_MAX_RETRIES_PER_PROVIDER}): {e}", file=sys.stderr)
-                if attempt < _MAX_RETRIES_PER_PROVIDER:
-                    time.sleep(60)
-                else:
-                    print(f"  → provider {provider} exhausted, trying next...", file=sys.stderr)
+                return model, call(key, system, user)
             except Exception as e:
                 print(f"  → error with {provider} (attempt {attempt}/{_MAX_RETRIES_PER_PROVIDER}): {e}", file=sys.stderr)
                 if attempt < _MAX_RETRIES_PER_PROVIDER:
