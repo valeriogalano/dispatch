@@ -7,7 +7,7 @@ After the digest is collected, two AI-generated recaps are produced via Gemini: 
 
 - **Automated Collection**: Fetches commits from multiple repositories using the GitHub API and links each public project section to the repository page.
 - **Smart Categorization**: Groups commits by [Conventional Commits](https://www.conventionalcommits.org/) prefixes (feat, fix, etc.).
-- **AI-Powered Summaries**: Uses Google Gemini (`gemini-3-flash-preview`) to generate:
+- **AI-Powered Summaries**: Uses Google Gemini (`gemini-3.5-flash`), with Anthropic Claude (`claude-haiku-4-5-20251001`) as fallback, to generate:
   - **Telegram Posts**: Schematic, emoji-rich updates tailored for technical channels.
   - **Blog Articles**: Narrative, SEO-friendly posts with Hugo frontmatter.
 - **Multi-Platform Publishing**:
@@ -74,6 +74,8 @@ The optional `host:` prefix supports `codeberg` (public repos only, no token nee
 |---|---|---|
 | `GH_TOKEN` | Secret | GitHub personal access token with `repo` scope (read for digest, write for website PR) |
 | `GEMINI_API_KEY` | Secret | Google Gemini API key |
+| `ANTHROPIC_API_KEY` | Secret | Anthropic API key, used as fallback when Gemini fails |
+| `AI_PROVIDER` | Variable | Optional, comma-separated provider order (default `google,anthropic`) |
 | `TELEGRAM_BOT_TOKEN` | Secret | Telegram bot token |
 | `TELEGRAM_CHAT_ID` | Variable | Telegram chat/channel ID where the recap is published |
 
