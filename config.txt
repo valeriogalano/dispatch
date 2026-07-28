@@ -4,7 +4,7 @@
 # The optional custom-link overrides the default repo link (useful for private repos).
 # Lines starting with # are comments, blank lines are ignored.
 
-valeriogalano/dev-updates | Dev updates
+valeriogalano/dispatch | Dispatch
 
 # Pensieri in codice
 valeriogalano/pensieriincodice-assets | Pensieri in codice - Assets

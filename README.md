@@ -1,4 +1,4 @@
-# dev-updates
+# Dispatch
 
 Automated weekly digest of GitHub activity across personal projects, saved as Markdown and browsable directly on GitHub.
 After the digest is collected, two AI-generated recaps are produced via Gemini: one for Telegram and one for the Pensieri in codice blog.

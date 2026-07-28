@@ -17,7 +17,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Checkout dev-updates repository
+      - name: Checkout Dispatch repository
         uses: actions/checkout@v4
         with:
           ref: main
@@ -84,7 +84,7 @@ jobs:
             gh pr create \
               --repo "$REPO" \
               --title "Recap ${DATE}" \
-              --body "Post recap settimanale generato automaticamente da dev-updates per il ${DATE}." \
+              --body "Post recap settimanale generato automaticamente da Dispatch per il ${DATE}." \
               --base main \
               --head "$BRANCH" || true
             PR_URL=$(find_pr)
