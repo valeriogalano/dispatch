@@ -50,3 +50,7 @@ valeriogalano/Highlighter | Highlighter
 # Desktop Apps
 valeriogalano/AudioPills | AudioPills
 valeriogalano/Timebox | Timebox
+
+# Agent tooling
+valeriogalano/telegram-mcp | Telegram MCP
+valeriogalano/agent-skills | Agent Skills
