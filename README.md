@@ -92,11 +92,17 @@ cp .env.example .env  # fill in the values
 ```
 
 ```bash
-# First time only: create the virtualenv
+# First time only: fetch the skills submodule and create the virtualenv
+git submodule update --init
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+`recap.py` composes Engram's prompt from `skills/engram/` at import time, so the
+submodule must be checked out or the script will not start. To change how Engram
+writes, edit the skill — never the prompt in `recap.py`, which no longer holds
+one.
 
 ```bash
 # Load env vars and run the full pipeline

@@ -55,6 +55,17 @@ jobs:
         with:
           ref: main
 
+      # Engram's voice lives in the skills submodule: without it recap.py has no
+      # prompt to compose and fails at import. agent-skills is private, so the
+      # default token cannot clone it. The PAT is scoped to this one command with
+      # `git -c` on purpose: passing it to actions/checkout instead would also
+      # make the recap commit below push as the PAT, which — unlike the default
+      # token — retriggers workflows listening on main.
+      - name: Fetch the skills submodule
+        run: |
+          git -c url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf="https://github.com/" \
+              submodule update --init --depth 1
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
