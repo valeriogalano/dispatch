@@ -12,9 +12,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          # importing recap.py composes Engram's prompt from the skills submodule
-          submodules: true
+
+      # importing recap.py composes Engram's prompt from the skills submodule,
+      # and agent-skills is private: the default token cannot clone it
+      - name: Fetch the skills submodule
+        run: |
+          git -c url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf="https://github.com/" \
+              submodule update --init --depth 1
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
