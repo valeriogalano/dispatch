@@ -93,7 +93,7 @@ cp .env.example .env  # fill in the values
 
 ```bash
 # First time only: fetch the skills submodule and create the virtualenv
-git submodule update --init
+git submodule update --init --remote
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -103,6 +103,11 @@ pip install -r requirements.txt
 submodule must be checked out or the script will not start. To change how Engram
 writes, edit the skill — never the prompt in `recap.py`, which no longer holds
 one.
+
+The submodule follows `agent-skills` **main** rather than a pinned commit
+(`--remote`): editing Engram changes how Engram writes everywhere, with nothing
+to bump here. Run `git submodule update --remote` to pick up skill changes
+locally. `agent-skills` is private, so a clone needs a token that can read it.
 
 ```bash
 # Load env vars and run the full pipeline

@@ -14,11 +14,13 @@ jobs:
         uses: actions/checkout@v4
 
       # importing recap.py composes Engram's prompt from the skills submodule,
-      # and agent-skills is private: the default token cannot clone it
+      # and agent-skills is private: the default token cannot clone it.
+      # --remote follows agent-skills main instead of the recorded commit, so a
+      # change to Engram reaches its consumers without a bump commit here.
       - name: Fetch the skills submodule
         run: |
           git -c url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf="https://github.com/" \
-              submodule update --init --depth 1
+              submodule update --init --remote --depth 1
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
