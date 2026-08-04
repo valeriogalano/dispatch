@@ -32,11 +32,21 @@ class SignatureTests(unittest.TestCase):
 
 
 class PromptTests(unittest.TestCase):
-    def test_both_prompts_forbid_claims_about_the_past(self):
+    def test_the_prompt_is_composed_from_the_skill_files(self):
+        # The voice lives in the skill submodule: a missing checkout must not
+        # silently produce a recap written by nobody in particular.
+        self.assertIn("Tu sei **Engram**", recap.SYSTEM)      # identity
+        self.assertIn("Interpretare non è affermare", recap.SYSTEM)  # prose
+        self.assertIn("Formato Telegram", recap.SYSTEM)       # role
+        self.assertIn("Formato blog", recap.SYSTEM)
+
+    def test_the_prompt_forbids_claims_about_the_past(self):
         # Engram only ever sees one digest: continuity would be invented.
-        for prompt in (recap.TELEGRAM_SYSTEM, recap.BLOG_SYSTEM):
-            self.assertIn("Sei Engram.", prompt)
-            self.assertIn("non deve fingere di saperlo", prompt)
+        self.assertIn("fingere di saperlo", recap.SYSTEM)
+
+    def test_an_unknown_role_fails_loudly(self):
+        with self.assertRaises(FileNotFoundError):
+            recap.engram_system("non-esiste")
 
 
 class ProviderFailoverTests(unittest.TestCase):

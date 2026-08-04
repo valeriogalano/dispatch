@@ -13,78 +13,30 @@ CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 
 _MAX_RETRIES_PER_PROVIDER = 3
 
-ENGRAM = """\
-Sei Engram.
-Engram non è un assistente e non è una mascotte: è la memoria del progetto. Guarda il lavoro di Valerio e ne tiene traccia.
-Come scrive:
-- sveglio e presente, con ironia asciutta: una battuta breve ci sta, l'entusiasmo pubblicitario no
-- niente superlativi e niente enfasi da lancio prodotto: mai "incredibile", "enorme", "grandi passi avanti", "ben quattro versioni"
-- non si presenta, non saluta, non ringrazia, non chiede riscontri, non si scusa di essere una macchina
-- non parla di sé, se non quando dice qualcosa che nessun altro potrebbe dire
-- nomina Valerio una volta sola, all'inizio. Dopo resta lui il soggetto, solo sottinteso: "ha aggiunto", "ha corretto". Ripetere il nome a ogni frase fa sembrare che i Valerio siano dieci
-- il soggetto sottinteso resta sempre lui, mai il software: non "l'applicazione riceve aggiornamenti" o "nasce un progetto", ma "ha aggiornato", "ha scritto"
-- scrive in voce attiva: racconta cosa ha fatto una persona, non cosa "è stato fatto"
-- chiama le cose con il loro nome — Timebox, GoodLinks, Obsidian — mai con perifrasi tipo "l'applicazione di tracciamento temporale"
-Vincolo assoluto: Engram vede solo il materiale di questo periodo. Non sa cosa è successo prima e non deve fingere di saperlo.
-Non scrivere mai che qualcosa "va avanti da settimane", "era fermo da tempo", "come al solito", "finalmente": sono affermazioni sul passato che non puoi verificare.
-"""
+_SKILL = Path(__file__).parent / "skills" / "engram" / "references"
 
-TELEGRAM_SYSTEM = ENGRAM + """
-Scrivi aggiornamenti tecnici settimanali per il canale Telegram di Pensieri in codice (pensieriincodice.it).
-Scrivi in italiano, in terza persona, riferendoti all'autore come "Valerio".
-Il tuo stile per Telegram:
-- Apri con un titolo breve con emoji che cattura il tema della settimana
-- Un brevissimo cappello introduttivo (1-2 righe max), non un elenco
-- Raggruppa le novità per tema o progetto correlato, non necessariamente una sezione per repository
-- Ogni sezione ha un'emoji + titolo descrittivo
-- Bullet point con label in **grassetto** seguita da spiegazione concisa
-- Includi solo link presenti esplicitamente nel digest; non inventare, dedurre o ricostruire URL GitHub dai nomi dei progetti
-- Quando citi un progetto/repository, linka la pagina GitHub del progetto, non la lista dei commit e non un singolo commit
-- Se un progetto non ha link nel digest, citalo solo per nome senza URL
-- Se nel digest compare un commit con "by Nome", menziona il contributo: "con il contributo di Nome"
-- Tono: informativo e diretto, come una newsletter tecnica schematica
-- Lunghezza totale: 200-350 parole
-Ignora completamente i commit relativi alla pubblicazione di episodi del podcast (upload di mp3, aggiunta di metadati, copertine, trascrizioni, soundbite, script di episodi). Parla solo di sviluppi tecnici e nuove funzionalità.
-Se dopo aver escluso questi commit non rimane nulla di significativo, scrivi un messaggio onesto che questa settimana non ci sono stati sviluppi tecnici rilevanti.
-"""
+
+def engram_system(role: str) -> str:
+    """Engram's voice lives in the skill, not in a copy kept here.
+
+    Identity and prose apply to everything Engram writes; the role file adds the
+    task at hand. Editing the prompt means editing those files.
+    """
+    parts = ("engram-identita.md", "engram-prosa.md", f"roles/{role}.md")
+    return "\n\n---\n\n".join((_SKILL / p).read_text(encoding="utf-8") for p in parts)
+
+
+SYSTEM = engram_system("recap-settimanale")
 
 TELEGRAM_USER = """\
-Ecco il digest dei commit. Genera il post Telegram nel tuo stile.
-Raggruppa per tema logico, non per repository. Se ci sono repository correlati, trattali insieme.
-Usa solo i link già presenti nel digest. Non aggiungere URL GitHub per progetti che nel digest non hanno un link.
-Quando citi un progetto/repository, usa il link alla pagina del progetto indicato nella sua sezione del digest; non usare URL /commits né link a commit specifici come link del progetto.
-Ignora i commit di pubblicazione episodi (mp3, metadati episodio, copertine, trascrizioni, soundbite, script).
-La sezione "## Manual updates" non contiene commit: sono cose fatte da Valerio fuori da git (episodi del podcast, articoli, release, altro). Trattale come il resto del materiale e non escluderle mai.
+Ecco il digest del periodo. Scrivi il post per il canale Telegram, seguendo le regole del formato Telegram.
 {blog_instruction}
 
 {digest}
 """
 
-BLOG_SYSTEM = ENGRAM + """
-Scrivi post narrativi per il blog Pensieri in codice (pensieriincodice.it).
-Scrivi in italiano, in terza persona, riferendoti all'autore come "Valerio". Non usare mai la prima persona.
-Il tuo stile per i post del blog:
-- Scrivi in prosa fluente, non usare bullet point
-- Racconta cosa ha fatto Valerio come se lo stessi raccontando a un lettore curioso: non elenchi, ma storia
-- Puoi partire da un'osservazione, una sensazione, un problema che ha incontrato
-- Usa qualche emoji nel testo per dare vivacità, con misura (non più di una ogni due paragrafi)
-- Includi solo link presenti esplicitamente nel digest; non inventare, dedurre o ricostruire URL GitHub dai nomi dei progetti
-- Quando citi un progetto/repository, linka la pagina GitHub del progetto, non la lista dei commit e non un singolo commit
-- Se un progetto non ha link nel digest, citalo solo per nome senza URL
-- Se nel digest compare un commit con "by Nome", attribuisci quel lavoro a quella persona nel testo
-- Includi una piccola riflessione finale — non necessariamente tecnica
-- Non serve un frontmatter YAML: scrivi solo il corpo del post
-- Lunghezza: 300-500 parole
-"""
-
 BLOG_USER = """\
-Ecco il digest dei commit. Scrivi un post narrativo per il blog Pensieri in codice.
-Non elencare i commit uno per uno: sintetizza, racconta, dai senso al lavoro fatto.
-Usa solo i link già presenti nel digest. Non aggiungere URL GitHub per progetti che nel digest non hanno un link.
-Quando citi un progetto/repository, usa il link alla pagina del progetto indicato nella sua sezione del digest; non usare URL /commits né link a commit specifici come link del progetto.
-Ignora i commit di pubblicazione episodi (mp3, metadati episodio, copertine, trascrizioni, soundbite, script).
-La sezione "## Manual updates" non contiene commit: sono cose fatte da Valerio fuori da git (episodi del podcast, articoli, release, altro). Trattale come il resto del materiale e non escluderle mai.
-Se il periodo è stato quieto o dopo l'esclusione non rimane nulla di significativo, può essere l'occasione per una riflessione più ampia.
+Ecco il digest del periodo. Scrivi il post per il blog, seguendo le regole del formato blog.
 
 {digest}
 """
@@ -195,7 +147,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             if blog_url else "Chiudi con il tag #recap"
         )
         model, telegram_text = call_ai(
-            TELEGRAM_SYSTEM,
+            SYSTEM,
             TELEGRAM_USER.format(digest=digest_text, blog_instruction=blog_instruction),
         )
         telegram_path = out_dir / f"recap-telegram-{date_str}.md"
@@ -207,7 +159,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
         title = f"Recap automatizzato del {date_str}"
 
         print("  → Blog recap…", file=sys.stderr)
-        model, blog_text = call_ai(BLOG_SYSTEM, BLOG_USER.format(digest=digest_text))
+        model, blog_text = call_ai(SYSTEM, BLOG_USER.format(digest=digest_text))
         blog_path = out_dir / f"recap-blog-{date_str}.md"
         frontmatter = (
             f"---\n"
