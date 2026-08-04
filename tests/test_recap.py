@@ -34,14 +34,16 @@ class SignatureTests(unittest.TestCase):
 class PromptTests(unittest.TestCase):
     def test_the_prompt_is_composed_from_the_skill_files(self):
         # The voice lives in the skill submodule: a missing checkout must not
-        # silently produce a recap written by nobody in particular.
-        self.assertIn("Tu sei **Engram**", recap.SYSTEM)      # identity
-        self.assertIn("Interpretare non è affermare", recap.SYSTEM)  # prose
-        self.assertIn("Formato Telegram", recap.SYSTEM)       # role
-        self.assertIn("Formato blog", recap.SYSTEM)
+        # silently produce a recap written by nobody in particular. Asserted
+        # against the files rather than their wording, since the submodule
+        # follows agent-skills main and the wording there is free to change.
+        for name in ("engram-identita.md", "engram-prosa.md", "roles/recap-settimanale.md"):
+            self.assertIn((recap._SKILL / name).read_text(encoding="utf-8"), recap.SYSTEM, name)
 
     def test_the_prompt_forbids_claims_about_the_past(self):
-        # Engram only ever sees one digest: continuity would be invented.
+        # Engram only ever sees one digest: continuity would be invented. This
+        # one is deliberately coupled to the skill's wording — dropping the
+        # constraint there should turn this red rather than pass unnoticed.
         self.assertIn("fingere di saperlo", recap.SYSTEM)
 
     def test_an_unknown_role_fails_loudly(self):

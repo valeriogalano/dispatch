@@ -1,3 +1,4 @@
 [submodule "skills"]
 	path = skills
 	url = https://github.com/valeriogalano/agent-skills.git
+	branch = main
