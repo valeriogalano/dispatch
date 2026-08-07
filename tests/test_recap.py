@@ -31,6 +31,28 @@ class SignatureTests(unittest.TestCase):
             self.assertIn("author: Engram", blog)
 
 
+    def test_a_trailer_written_by_the_model_is_replaced_by_the_real_one(self):
+        # The skill asks Engram to sign and disclose, but it cannot know which
+        # model is running it: it invents the name. Only the code's version stays.
+        written = "Testo del recap.\n\n— Engram\n\n_Questo testo è stato generato con gpt-4o_"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            digest = out / "digest-2026-07-24.md"
+            digest.write_text("# Dev Updates\n\n- qualcosa\n", encoding="utf-8")
+
+            with patch.object(recap, "call_ai", return_value=("gemini-3.5-flash", written)):
+                recap.generate_recap(digest, out, ["telegram", "blog"])
+
+            for name in ("recap-telegram-2026-07-24.md", "recap-blog-2026-07-24.md"):
+                text = (out / name).read_text(encoding="utf-8")
+                self.assertNotIn("gpt-4o", text, name)
+                self.assertEqual(1, text.count("generato con"), name)
+
+            self.assertNotIn("— Engram", (out / "recap-telegram-2026-07-24.md").read_text(encoding="utf-8"))
+            self.assertEqual(1, (out / "recap-blog-2026-07-24.md").read_text(encoding="utf-8").count("— Engram"))
+
+
 class PromptTests(unittest.TestCase):
     def test_the_prompt_is_composed_from_the_skill_files(self):
         # The voice lives in the skill submodule: a missing checkout must not

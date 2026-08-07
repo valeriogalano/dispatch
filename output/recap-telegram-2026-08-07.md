@@ -19,6 +19,4 @@ Questa settimana Valerio si è concentrato sulla ristrutturazione degli strument
 📖 Articolo completo: https://pensieriincodice.it/blog/2026-08-07-recap/
 #recap
 
-_Questo testo è stato generato con gpt-4o_
-
 _Questo testo è stato generato con gemini-3.5-flash_

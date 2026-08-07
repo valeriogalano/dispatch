@@ -3,6 +3,7 @@
 
 import argparse
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -112,6 +113,16 @@ def call_ai(system: str, user: str) -> tuple[str, str]:
     raise RuntimeError(f"all providers exhausted: {', '.join(providers)}")
 
 
+# the skill teaches Engram to close with the signature and the disclosure, but it
+# cannot know which model is running it and invents the name. The code owns both:
+# whatever the model wrote there is dropped before the real one is appended.
+_TRAILER = re.compile(r"(\s*(—\s*Engram|_Questo testo è stato generato con[^_\n]*_))+\s*$")
+
+
+def strip_trailer(text: str) -> str:
+    return _TRAILER.sub("", text).rstrip()
+
+
 def disclosure(model: str) -> str:
     """The disclosure travels with every recap, signed or not."""
     return f"\n\n_Questo testo è stato generato con {model}_\n"
@@ -151,7 +162,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             TELEGRAM_USER.format(digest=digest_text, blog_instruction=blog_instruction),
         )
         telegram_path = out_dir / f"recap-telegram-{date_str}.md"
-        telegram_path.write_text(telegram_text + disclosure(model), encoding="utf-8")
+        telegram_path.write_text(strip_trailer(telegram_text) + disclosure(model), encoding="utf-8")
         print(f"[saved] {telegram_path}", file=sys.stderr)
         print(f"\n=== {date_str} — TELEGRAM ===\n{telegram_text}")
 
@@ -177,7 +188,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             f"author: Engram\n"
             f"---\n\n"
         )
-        blog_path.write_text(frontmatter + blog_text + signature(model), encoding="utf-8")
+        blog_path.write_text(frontmatter + strip_trailer(blog_text) + signature(model), encoding="utf-8")
         print(f"[saved] {blog_path}", file=sys.stderr)
         print(f"\n=== {date_str} — BLOG (titolo: {title}) ===\n{blog_text}")
 
