@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout Dispatch repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
 
@@ -39,7 +39,7 @@ jobs:
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
 
       - name: Checkout pensieriincodice-website
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: valeriogalano/pensieriincodice-website
           token: ${{ secrets.GH_TOKEN }}
