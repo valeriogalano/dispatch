@@ -70,6 +70,28 @@ class AlreadySentTests(unittest.TestCase):
                 self.assertEqual(0, publish_telegram.main())
                 self.assertEqual(1, send.call_count)
 
+    def test_the_marker_records_the_message_ids(self):
+        import os
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            recap = Path(tmp) / "recap-telegram-2026-07-24.md"
+            recap.write_text("ciao")
+            markers = Path(tmp) / "sent"
+            argv = ["publish_telegram.py", str(recap), "--marker-dir", str(markers)]
+            env = {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "c"}
+            sent = {"ok": True, "result": {"message_id": 529}}
+
+            with patch.object(sys, "argv", argv), patch.dict(os.environ, env), \
+                    patch("publish_telegram.send_message", return_value=sent):
+                self.assertEqual(0, publish_telegram.main())
+
+            lines = (markers / "recap-telegram-2026-07-24.sent").read_text().split()
+            self.assertEqual("529", lines[-1])
+
     def test_a_failed_send_leaves_no_marker(self):
         import os
         import sys

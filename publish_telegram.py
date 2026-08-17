@@ -96,9 +96,15 @@ def marker_path(recap_file: str, marker_dir: str) -> Path:
     return Path(marker_dir) / f"{Path(recap_file).stem}.sent"
 
 
-def write_marker(marker: Path) -> None:
+def write_marker(marker: Path, message_ids: list[int]) -> None:
+    """First line the send time, then one message id per line.
+
+    The ids are what an editMessageText needs later: a published recap can only be
+    corrected in place, and Telegram offers no way to look them up after the fact.
+    """
     marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(datetime.now(timezone.utc).isoformat() + "\n", encoding="utf-8")
+    lines = [datetime.now(timezone.utc).isoformat()] + [str(i) for i in message_ids]
+    marker.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main() -> int:
@@ -132,31 +138,40 @@ def main() -> int:
     if len(chunks) > 1:
         print(f"[info] recap too long for one message, splitting into {len(chunks)} parts")
 
+    message_ids = []
     for index, chunk in enumerate(chunks, start=1):
-        if not send_chunk(token, chat_id, chunk, index, len(chunks)):
+        message_id = send_chunk(token, chat_id, chunk, index, len(chunks))
+        if message_id is None:
             return 1
+        message_ids.append(message_id)
 
-    write_marker(marker)
+    write_marker(marker, message_ids)
     return 0
 
 
-def send_chunk(token: str, chat_id: str, chunk: str, index: int, total: int) -> bool:
+def sent_message_id(response: dict) -> int:
+    # a send that reports ok without an id should still count as sent: 0 is never a
+    # real message id, so the marker records it as "sent, not editable"
+    return response.get("result", {}).get("message_id", 0)
+
+
+def send_chunk(token: str, chat_id: str, chunk: str, index: int, total: int) -> int | None:
     label = f"part {index}/{total}" if total > 1 else "message"
 
     response = send_message(token, chat_id, markdown_to_telegram_html(chunk), parse_mode="HTML")
     if response.get("ok"):
         print(f"[sent] Telegram {label} sent with HTML formatting")
-        return True
+        return sent_message_id(response)
 
     print(f"[warn] Telegram HTML send failed ({label}): {response}", file=sys.stderr)
     if should_retry_plain(response):
         fallback = send_message(token, chat_id, markdown_to_plain_text(chunk))
         if fallback.get("ok"):
             print(f"[sent] Telegram {label} sent as plain text after parse fallback")
-            return True
+            return sent_message_id(fallback)
         print(f"[error] Telegram plain-text fallback failed ({label}): {fallback}", file=sys.stderr)
 
-    return False
+    return None
 
 
 if __name__ == "__main__":
