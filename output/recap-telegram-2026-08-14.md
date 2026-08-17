@@ -1,6 +1,6 @@
-🛠️ Sottotitoli, Instagram senza Facebook e il rilascio di Highlighter 1.2.0
+🛠️ Sottotitoli, Instagram senza Facebook e il rilascio di Book Highlighter 1.2.0
 
-Questa settimana Valerio ha concentrato gli sforzi sul completamento di Highlighter 1.2.0 e su una profonda ristrutturazione delle automazioni del podcast, semplificando la pubblicazione su Instagram.
+Questa settimana Valerio ha concentrato gli sforzi sul completamento di Book Highlighter 1.2.0 e su una profonda ristrutturazione delle automazioni del podcast, semplificando la pubblicazione su Instagram.
 
 🎙️ **Automazione Podcast e Instagram**
 
@@ -9,7 +9,7 @@ Questa settimana Valerio ha concentrato gli sforzi sul completamento di Highligh
 *   **Sonda dei token:** Aggiunta una verifica oraria dello stato del token Instagram per registrare subito nei log eventuali errori di autenticazione di Meta.
 *   **Routing Telegram:** Divisi i canali di destinazione in base alla durata del video: le storie brevi vanno su più chat, i messaggi video lunghi solo sul canale principale.
 
-📚 **Highlighter 1.2.0**
+📚 **Book Highlighter 1.2.0**
 
 *   **Copertine offline:** Salvataggio delle immagini di copertina direttamente nel database locale, supportato da una cache più robusta per evitare continui download.
 *   **Condivisione personalizzabile:** Nuove opzioni per escludere i dettagli del libro o della pagina sia dalle immagini generate che dalle esportazioni di testo.
