@@ -45,7 +45,7 @@ valeriogalano/daredevel-assets | daredevel.com - Assets
 # iOS Apps
 valeriogalano/PrompterCam | PrompterCam
 valeriogalano/KeepInTouch | KeepInTouch
-valeriogalano/Highlighter | Highlighter
+valeriogalano/BookHighlighter | Book Highlighter
 
 # Desktop Apps
 valeriogalano/AudioPills | AudioPills
