@@ -81,7 +81,18 @@ class EmptyPeriodTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             config = Path(tmp) / "config.txt"
             config.write_text("owner/project | Project\n")
-            argv = ["collect.py", "--config", str(config), "--output-dir", tmp]
+            # Without --manual-dir this falls back to the repo's real manual/,
+            # and a note dated inside the default window makes a digest on
+            # purpose (see ManualEntriesTests below) — which would fail this
+            # test for a reason that has nothing to do with commits.
+            empty_manual = Path(tmp) / "no-manual-notes"
+            empty_manual.mkdir()
+            argv = [
+                "collect.py",
+                "--config", str(config),
+                "--output-dir", tmp,
+                "--manual-dir", str(empty_manual),
+            ]
             with patch.object(sys, "argv", argv), patch.dict("os.environ", {"GH_TOKEN": "token"}):
                 collect.main()
             self.assertEqual([], list(Path(tmp).glob("digest-*.md")))
