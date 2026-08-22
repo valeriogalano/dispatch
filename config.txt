@@ -52,5 +52,6 @@ valeriogalano/AudioPills | AudioPills
 valeriogalano/Timebox | Timebox
 
 # Agent tooling
+valeriogalano/instagram-mcp | Instagram MCP
 valeriogalano/telegram-mcp | Telegram MCP
 valeriogalano/agent-skills | Agent Skills
