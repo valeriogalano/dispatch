@@ -53,6 +53,39 @@ class SignatureTests(unittest.TestCase):
             self.assertEqual(1, (out / "recap-blog-2026-07-24.md").read_text(encoding="utf-8").count("— Engram"))
 
 
+class LinkTests(unittest.TestCase):
+    def test_a_link_missing_from_the_digest_is_reduced_to_its_text(self):
+        # 2026-09-26: a private repo, listed without a link, got a GitHub URL
+        # rebuilt from its name. Only links the digest carries survive.
+        written = (
+            "[Dispatch](https://github.com/valeriogalano/dispatch) e "
+            "[Book Highlighter](https://github.com/valeriogalano/book-highlighter). "
+            "[Articolo](https://pensieriincodice.it/blog/2026-09-26-recap/)"
+        )
+        digest_text = "## Dispatch\n<https://github.com/valeriogalano/dispatch>\n\n## Book Highlighter\n\n- x\n"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            digest = out / "digest-2026-09-26.md"
+            digest.write_text(digest_text, encoding="utf-8")
+
+            with patch.object(recap, "call_ai", return_value=("gemini-3.5-flash", written)):
+                recap.generate_recap(
+                    digest, out, ["telegram", "blog"],
+                    blog_url="https://pensieriincodice.it/blog/2026-09-26-recap/",
+                )
+
+            telegram = (out / "recap-telegram-2026-09-26.md").read_text(encoding="utf-8")
+            self.assertIn("[Dispatch](https://github.com/valeriogalano/dispatch)", telegram)
+            self.assertIn(" e Book Highlighter.", telegram)
+            self.assertIn("[Articolo](https://pensieriincodice.it/blog/2026-09-26-recap/)", telegram)
+
+            # the blog post links to itself nowhere: blog_url is Telegram's only
+            blog = (out / "recap-blog-2026-09-26.md").read_text(encoding="utf-8")
+            self.assertNotIn("book-highlighter", blog)
+            self.assertIn(" Articolo", blog)
+
+
 class PromptTests(unittest.TestCase):
     def test_the_prompt_is_composed_from_the_skill_files(self):
         # The voice lives in the skill submodule: a missing checkout must not

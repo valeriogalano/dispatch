@@ -27,9 +27,11 @@ Every Friday at 18:00 UTC:
    - `output/recap-telegram-YYYY-MM-DD.md` — schematic post ready to publish to Telegram
    - `output/recap-blog-YYYY-MM-DD.md` — narrative post with Hugo frontmatter for the Pensieri in codice blog
 
+   Any markdown link whose URL is not in the digest is reduced to its text: the model tends to rebuild GitHub URLs from project names, private repositories included.
+
 All files are committed back to the repository automatically.
 
-The chain runs again every hour between 19:00 and 22:00 UTC on Friday, to recover from a failed run without a manual re-run. Every stage is a no-op once it went through: the recap workflows skip the AI call when the file for that date exists, the website publication reuses the open PR, and `publish_telegram.py` records a marker in `output/sent/` and refuses to send the same recap twice.
+The chain runs again every hour between 19:00 and 22:00 UTC on Friday, to recover from a failed run without a manual re-run. Every stage is a no-op once it went through: a scheduled run that finds a digest dated today or yesterday does not collect again (GitHub may start the last retry after midnight UTC, under Saturday's date), the recap workflows skip the AI call when the file for that date exists, the website publication reuses the open PR, and `publish_telegram.py` records a marker in `output/sent/` and refuses to send the same recap twice.
 
 ### Manual updates (`manual/`)
 
