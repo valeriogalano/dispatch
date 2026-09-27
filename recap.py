@@ -123,6 +123,17 @@ def strip_trailer(text: str) -> str:
     return _TRAILER.sub("", text).rstrip()
 
 
+# the skill forbids links the digest does not carry, and the model still rebuilds
+# them from project names: a private repo got a made-up GitHub URL. The code keeps
+# only links whose URL appears verbatim in what the model was given.
+# ponytail: markdown links only; bare invented URLs pass, add them if they show up
+_MD_LINK = re.compile(r"(?<!!)\[([^\]]+)\]\((\S+?)(?:\s+\"[^\"]*\")?\)")
+
+
+def drop_invented_links(text: str, source: str) -> str:
+    return _MD_LINK.sub(lambda m: m.group(0) if m.group(2) in source else m.group(1), text)
+
+
 def disclosure(model: str) -> str:
     """The disclosure travels with every recap, signed or not."""
     return f"\n\n_Questo testo è stato generato con {model}_\n"
@@ -162,6 +173,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             TELEGRAM_USER.format(digest=digest_text, blog_instruction=blog_instruction),
         )
         telegram_path = out_dir / f"recap-telegram-{date_str}.md"
+        telegram_text = drop_invented_links(telegram_text, digest_text + blog_url)
         telegram_path.write_text(strip_trailer(telegram_text) + disclosure(model), encoding="utf-8")
         print(f"[saved] {telegram_path}", file=sys.stderr)
         print(f"\n=== {date_str} — TELEGRAM ===\n{telegram_text}")
@@ -171,6 +183,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
 
         print("  → Blog recap…", file=sys.stderr)
         model, blog_text = call_ai(SYSTEM, BLOG_USER.format(digest=digest_text))
+        blog_text = drop_invented_links(blog_text, digest_text)
         blog_path = out_dir / f"recap-blog-{date_str}.md"
         frontmatter = (
             f"---\n"

@@ -43,10 +43,20 @@ jobs:
             echo "days=7" >> "$GITHUB_OUTPUT"
           fi
 
+      # the digest is named after the UTC date of the run: a retry that GitHub
+      # starts late, past midnight, would write a second one under Saturday's
+      # date and send a second recap (2026-09-26). One digest per week, so a
+      # scheduled run that finds today's or yesterday's has nothing to do; the
+      # chain downstream still runs and resumes whatever failed.
       - name: Run collect.py
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && \
+             ls "output/digest-$(date -u +%F).md" "output/digest-$(date -u -d yesterday +%F).md" 2>/dev/null | grep -q .; then
+            echo "[info] this week's digest already exists, not collecting again"
+            exit 0
+          fi
           .venv/bin/python collect.py --days ${{ steps.params.outputs.days }}
 
       # output/ is committed and would grow forever; git history keeps whatever is pruned
