@@ -60,6 +60,8 @@ class LinkTests(unittest.TestCase):
         written = (
             "[Dispatch](https://github.com/valeriogalano/dispatch) e "
             "[Book Highlighter](https://github.com/valeriogalano/book-highlighter). "
+            '[Titolo](https://invented.example "Titolo") ![logo](https://img.example/x.png) '
+
             "[Articolo](https://pensieriincodice.it/blog/2026-09-26-recap/)"
         )
         digest_text = "## Dispatch\n<https://github.com/valeriogalano/dispatch>\n\n## Book Highlighter\n\n- x\n"
@@ -78,6 +80,9 @@ class LinkTests(unittest.TestCase):
             telegram = (out / "recap-telegram-2026-09-26.md").read_text(encoding="utf-8")
             self.assertIn("[Dispatch](https://github.com/valeriogalano/dispatch)", telegram)
             self.assertIn(" e Book Highlighter.", telegram)
+            self.assertNotIn("invented.example", telegram)
+            # images are left alone: stripping one would leave a stray "!"
+            self.assertIn("![logo](https://img.example/x.png)", telegram)
             self.assertIn("[Articolo](https://pensieriincodice.it/blog/2026-09-26-recap/)", telegram)
 
             # the blog post links to itself nowhere: blog_url is Telegram's only

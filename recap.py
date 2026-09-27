@@ -127,7 +127,7 @@ def strip_trailer(text: str) -> str:
 # them from project names: a private repo got a made-up GitHub URL. The code keeps
 # only links whose URL appears verbatim in what the model was given.
 # ponytail: markdown links only; bare invented URLs pass, add them if they show up
-_MD_LINK = re.compile(r"\[([^\]]+)\]\((\S+?)\)")
+_MD_LINK = re.compile(r"(?<!!)\[([^\]]+)\]\((\S+?)(?:\s+\"[^\"]*\")?\)")
 
 
 def drop_invented_links(text: str, source: str) -> str:
