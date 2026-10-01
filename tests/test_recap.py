@@ -7,7 +7,7 @@ import recap
 
 
 class SignatureTests(unittest.TestCase):
-    def test_only_the_blog_is_signed_and_the_disclosure_closes_both(self):
+    def test_nothing_is_signed_and_the_disclosure_closes_both(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
             digest = out / "digest-2026-07-24.md"
@@ -19,23 +19,30 @@ class SignatureTests(unittest.TestCase):
             for name in ("recap-telegram-2026-07-24.md", "recap-blog-2026-07-24.md"):
                 text = (out / name).read_text(encoding="utf-8")
                 lines = [line for line in text.splitlines() if line.strip()]
-                self.assertEqual("_Questo testo è stato generato con gemini-3.5-flash_", lines[-1], name)
+                self.assertEqual("_Generato con gemini-3.5-flash_", lines[-1], name)
                 self.assertNotIn("generato con", text.split("Testo del recap.")[0], name)
 
-            # On Telegram the channel already shows Engram as the sender: signing again is noise.
-            telegram = (out / "recap-telegram-2026-07-24.md").read_text(encoding="utf-8")
-            self.assertNotIn("— Engram", telegram)
+            # The channel shows the author line and the site shows the author box:
+            # signing again is noise.
+            for name in ("recap-telegram-2026-07-24.md", "recap-blog-2026-07-24.md"):
+                self.assertNotIn("— Engram", (out / name).read_text(encoding="utf-8"), name)
 
             blog = (out / "recap-blog-2026-07-24.md").read_text(encoding="utf-8")
-            self.assertEqual("— Engram", [l for l in blog.splitlines() if l.strip()][-2])
             self.assertIn("author: Engram", blog)
 
 
     def test_a_trailer_written_by_the_model_is_replaced_by_the_real_one(self):
-        # The skill asks Engram to sign and disclose, but it cannot know which
-        # model is running it: it invents the name. Only the code's version stays.
-        written = "Testo del recap.\n\n— Engram\n\n_Questo testo è stato generato con gpt-4o_"
+        # The skill asks Engram to disclose, but it cannot know which model is
+        # running it: it invents the name. Only the code's version stays, whether the
+        # model used the old signed wording or the current one.
+        for written in (
+            "Testo del recap.\n\n— Engram\n\n_Questo testo è stato generato con gpt-4o_",
+            "Testo del recap.\n\n_Generato con gpt-4o_",
+        ):
+            with self.subTest(written=written):
+                self._assert_only_the_real_trailer_stays(written)
 
+    def _assert_only_the_real_trailer_stays(self, written):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
             digest = out / "digest-2026-07-24.md"
@@ -47,10 +54,9 @@ class SignatureTests(unittest.TestCase):
             for name in ("recap-telegram-2026-07-24.md", "recap-blog-2026-07-24.md"):
                 text = (out / name).read_text(encoding="utf-8")
                 self.assertNotIn("gpt-4o", text, name)
-                self.assertEqual(1, text.count("generato con"), name)
+                self.assertEqual(1, text.lower().count("generato con"), name)
 
-            self.assertNotIn("— Engram", (out / "recap-telegram-2026-07-24.md").read_text(encoding="utf-8"))
-            self.assertEqual(1, (out / "recap-blog-2026-07-24.md").read_text(encoding="utf-8").count("— Engram"))
+                self.assertNotIn("— Engram", text, name)
 
 
 class LinkTests(unittest.TestCase):

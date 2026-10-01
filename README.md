@@ -13,6 +13,7 @@ After the digest is collected, two AI-generated recaps are produced via Gemini: 
 - **Multi-Platform Publishing**:
   - Automatically opens and merges PRs on a Hugo website.
   - Sends formatted messages to Telegram via Bot API.
+- **Pipeline Noise Filtered**: Commits made by CI bots and the merges of generated recap PRs are left out of the digest, so the recap never reports the pipeline's own output as work.
 - **Contributor Attribution**: Recognizes and credits external human contributors in both the digest and the recaps.
 - **Workflow Automation**: Fully integrated GitHub Actions chain with retry logic for API stability.
 

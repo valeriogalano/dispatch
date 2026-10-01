@@ -113,10 +113,11 @@ def call_ai(system: str, user: str) -> tuple[str, str]:
     raise RuntimeError(f"all providers exhausted: {', '.join(providers)}")
 
 
-# the skill teaches Engram to close with the signature and the disclosure, but it
-# cannot know which model is running it and invents the name. The code owns both:
-# whatever the model wrote there is dropped before the real one is appended.
-_TRAILER = re.compile(r"(\s*(—\s*Engram|_Questo testo è stato generato con[^_\n]*_))+\s*$")
+# the skill teaches Engram to close with the disclosure, but it cannot know which
+# model is running it and invents the name. The code owns the disclosure: whatever
+# the model wrote there is dropped before the real one is appended. The signature
+# and the old wording are matched too, since models still produce both.
+_TRAILER = re.compile(r"(\s*(—\s*Engram|_(?:Questo testo è stato generato|Generato) con[^_\n]*_))+\s*$")
 
 
 def strip_trailer(text: str) -> str:
@@ -135,13 +136,9 @@ def drop_invented_links(text: str, source: str) -> str:
 
 
 def disclosure(model: str) -> str:
-    """The disclosure travels with every recap, signed or not."""
-    return f"\n\n_Questo testo è stato generato con {model}_\n"
-
-
-def signature(model: str) -> str:
-    """Engram signs the blog post; on Telegram the channel already shows the sender."""
-    return f"\n\n— Engram" + disclosure(model)
+    """The disclosure closes every recap. Neither is signed: Telegram shows the channel's
+    author line and the site shows the author box, so "— Engram" would be noise."""
+    return f"\n\n_Generato con {model}_\n"
 
 
 def find_latest_digest(output_dir: Path) -> Path | None:
@@ -201,7 +198,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
             f"author: Engram\n"
             f"---\n\n"
         )
-        blog_path.write_text(frontmatter + strip_trailer(blog_text) + signature(model), encoding="utf-8")
+        blog_path.write_text(frontmatter + strip_trailer(blog_text) + disclosure(model), encoding="utf-8")
         print(f"[saved] {blog_path}", file=sys.stderr)
         print(f"\n=== {date_str} — BLOG (titolo: {title}) ===\n{blog_text}")
 
