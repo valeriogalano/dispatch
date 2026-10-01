@@ -163,6 +163,35 @@ class CategorizeTests(unittest.TestCase):
         self.assertEqual("Added", collect.categorize("feat(collect): add codeberg support"))
 
 
+class AutomatedCommitTests(unittest.TestCase):
+    def fetch(self, *items):
+        raw = [
+            {"sha": "abcdef123", "html_url": "u", "author": author,
+             "commit": {"message": subject, "author": {"name": "x"}}}
+            for author, subject in items
+        ]
+        repo = {"slug": "o/r", "host": "github"}
+        with patch.object(collect, "api_get", return_value=raw):
+            return [c["subject"] for c in collect.fetch_commits(
+                repo, datetime(2026, 9, 1, tzinfo=timezone.utc), "t")]
+
+    def test_ci_bot_and_recap_merges_are_left_out_of_the_digest(self):
+        human = {"login": "valeriogalano", "type": "User"}
+        subjects = self.fetch(
+            ({"login": "github-actions[bot]", "type": "Bot"}, "chore: add weekly digest 2026-09-26"),
+            (human, "Merge pull request #94 from valeriogalano/recap/2026-09-26"),
+            (human, "Merge pull request #95 from valeriogalano/feat/avatar-valerio"),
+            (human, "feat: avatar nei post"),
+            (None, "fix: author unknown to GitHub"),
+        )
+        self.assertEqual(
+            ["Merge pull request #95 from valeriogalano/feat/avatar-valerio",
+             "feat: avatar nei post",
+             "fix: author unknown to GitHub"],
+            subjects,
+        )
+
+
 class ManualWindowTests(unittest.TestCase):
     def test_note_dated_on_since_belongs_to_the_previous_window(self):
         import tempfile

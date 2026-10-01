@@ -3,6 +3,7 @@
 
 import argparse
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone, timedelta
@@ -130,6 +131,23 @@ def extract_author(item: dict) -> str:
     return name or login
 
 
+# the merge of a generated recap PR is part of the recap pipeline, not work to report
+_RECAP_MERGE = re.compile(r"^Merge pull request #\d+ from \S+/recap/")
+
+
+def is_automated(item: dict, subject: str) -> bool:
+    """Commits the pipeline makes about itself: CI bots and the merge of recap PRs.
+
+    Left in the digest, Engram narrates them as something Valerio did.
+    """
+    author_info = item.get("author") or {}
+    return (
+        author_info.get("login", "").endswith("[bot]")
+        or author_info.get("type") == "Bot"
+        or bool(_RECAP_MERGE.match(subject))
+    )
+
+
 def repo_host(repo: dict) -> dict:
     return HOSTS[repo.get("host", "github")]
 
@@ -158,6 +176,8 @@ def fetch_commits(repo: dict, since: datetime, token: str, until: datetime = Non
     for item in raw:
         full_msg = item.get("commit", {}).get("message", "")
         subject = full_msg.splitlines()[0]
+        if is_automated(item, subject):
+            continue
         body = full_msg[len(subject):].strip()
         sha = item.get("sha", "")[:7]
         html_url = item.get("html_url", "")
