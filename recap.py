@@ -9,8 +9,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-GEMINI_MODEL = "gemini-3.5-flash"
-CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+GEMINI_MODEL = "gemini-3.8-flash"
+CLAUDE_MODEL = "claude-sonnet-5-5"
 
 _MAX_RETRIES_PER_PROVIDER = 3
 
@@ -67,7 +67,8 @@ def _call_claude(api_key: str, system: str, user: str) -> str:
         system=system,
         messages=[{"role": "user", "content": user}],
     )
-    return message.content[0].text.strip()
+    # the model may open with a thinking block, which has no text: keep the text blocks
+    return "".join(b.text for b in message.content if b.type == "text").strip()
 
 
 def _get_providers() -> list[str]:

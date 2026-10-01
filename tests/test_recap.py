@@ -13,13 +13,13 @@ class SignatureTests(unittest.TestCase):
             digest = out / "digest-2026-07-24.md"
             digest.write_text("# Dev Updates\n\n- qualcosa\n", encoding="utf-8")
 
-            with patch.object(recap, "call_ai", return_value=("gemini-3.5-flash", "Testo del recap.")):
+            with patch.object(recap, "call_ai", return_value=("gemini-3.8-flash", "Testo del recap.")):
                 recap.generate_recap(digest, out, ["telegram", "blog"])
 
             for name in ("recap-telegram-2026-07-24.md", "recap-blog-2026-07-24.md"):
                 text = (out / name).read_text(encoding="utf-8")
                 lines = [line for line in text.splitlines() if line.strip()]
-                self.assertEqual("_Generato con gemini-3.5-flash_", lines[-1], name)
+                self.assertEqual("_Generato con gemini-3.8-flash_", lines[-1], name)
                 self.assertNotIn("generato con", text.split("Testo del recap.")[0], name)
 
             # The channel shows the author line and the site shows the author box:
@@ -48,7 +48,7 @@ class SignatureTests(unittest.TestCase):
             digest = out / "digest-2026-07-24.md"
             digest.write_text("# Dev Updates\n\n- qualcosa\n", encoding="utf-8")
 
-            with patch.object(recap, "call_ai", return_value=("gemini-3.5-flash", written)):
+            with patch.object(recap, "call_ai", return_value=("gemini-3.8-flash", written)):
                 recap.generate_recap(digest, out, ["telegram", "blog"])
 
             for name in ("recap-telegram-2026-07-24.md", "recap-blog-2026-07-24.md"):
@@ -57,6 +57,23 @@ class SignatureTests(unittest.TestCase):
                 self.assertEqual(1, text.lower().count("generato con"), name)
 
                 self.assertNotIn("— Engram", text, name)
+
+
+class ClaudeResponseTests(unittest.TestCase):
+    def test_a_leading_thinking_block_is_skipped(self):
+        # claude-sonnet-5-5 answers with a thinking block first, which has no text:
+        # reading content[0].text crashed every attempt.
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        message = SimpleNamespace(content=[
+            SimpleNamespace(type="thinking"),
+            SimpleNamespace(type="text", text=" Testo del recap. "),
+        ])
+        client = MagicMock()
+        client.messages.create.return_value = message
+        with patch("anthropic.Anthropic", return_value=client):
+            self.assertEqual("Testo del recap.", recap._call_claude("key", "system", "user"))
 
 
 class LinkTests(unittest.TestCase):
@@ -77,7 +94,7 @@ class LinkTests(unittest.TestCase):
             digest = out / "digest-2026-09-26.md"
             digest.write_text(digest_text, encoding="utf-8")
 
-            with patch.object(recap, "call_ai", return_value=("gemini-3.5-flash", written)):
+            with patch.object(recap, "call_ai", return_value=("gemini-3.8-flash", written)):
                 recap.generate_recap(
                     digest, out, ["telegram", "blog"],
                     blog_url="https://pensieriincodice.it/blog/2026-09-26-recap/",
