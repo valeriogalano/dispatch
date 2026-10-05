@@ -84,7 +84,7 @@ jobs:
             gh pr create \
               --repo "$REPO" \
               --title "Recap ${DATE}" \
-              --body "Post recap settimanale generato automaticamente da Dispatch per il ${DATE}." \
+              --body "Weekly recap post generated automatically by Dispatch for ${DATE}." \
               --base main \
               --head "$BRANCH" || true
             PR_URL=$(find_pr)
