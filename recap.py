@@ -146,6 +146,18 @@ def disclosure(model: str) -> str:
     return f"\n\n_Generato con {model}_\n"
 
 
+# the month names are written out here: strftime("%B") follows the system locale,
+# and the CI runner is not Italian
+_MONTHS = ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
+           "agosto", "settembre", "ottobre", "novembre", "dicembre")
+
+
+def diary_title(date_str: str) -> str:
+    """"2026-10-09" -> "Diario di Engram – 9 ottobre 2026". The slug keeps the ISO date."""
+    year, month, day = (int(x) for x in date_str.split("-"))
+    return f"Diario di Engram – {day} {_MONTHS[month - 1]} {year}"
+
+
 def find_latest_digest(output_dir: Path) -> Path | None:
     candidates = sorted(output_dir.glob("digest-*.md"), reverse=True)
     return candidates[0] if candidates else None
@@ -181,7 +193,7 @@ def generate_recap(digest_path: Path, out_dir: Path, formats: list[str], blog_ur
         print(f"\n=== {date_str} — TELEGRAM ===\n{telegram_text}")
 
     if "blog" in formats:
-        title = f"Recap automatizzato del {date_str}"
+        title = diary_title(date_str)
 
         print("  → Blog recap…", file=sys.stderr)
         model, blog_text = call_ai(SYSTEM, BLOG_USER.format(digest=digest_text))

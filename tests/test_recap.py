@@ -69,6 +69,23 @@ class SignatureTests(unittest.TestCase):
             self.assertNotIn("generato con", blog.lower())
 
 
+class TitleTests(unittest.TestCase):
+    def test_the_blog_title_spells_the_date_in_italian(self):
+        self.assertEqual("Diario di Engram – 9 ottobre 2026", recap.diary_title("2026-10-09"))
+        self.assertEqual("Diario di Engram – 1 gennaio 2027", recap.diary_title("2027-01-01"))
+
+    def test_the_file_name_keeps_the_iso_date(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            digest = out / "digest-2026-12-04.md"
+            digest.write_text("# Dev Updates\n\n- qualcosa\n", encoding="utf-8")
+            with patch.object(recap, "call_ai", return_value=("m", "Testo.")):
+                recap.generate_recap(digest, out, ["blog"])
+
+            blog = (out / "recap-blog-2026-12-04.md").read_text(encoding="utf-8")
+            self.assertIn('title: "Diario di Engram – 4 dicembre 2026"\n', blog)
+
+
 class ClaudeResponseTests(unittest.TestCase):
     def test_a_leading_thinking_block_is_skipped(self):
         # claude-sonnet-5-5 answers with a thinking block first, which has no text:

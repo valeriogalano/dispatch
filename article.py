@@ -125,9 +125,10 @@ def generate_article(website: Path, number: int, out_dir: Path) -> bool:
         print(f"[rejected] {path}: " + "; ".join(problems), file=sys.stderr)
         return False
 
-    footer = f"\n\nQuesto articolo è tratto dall'[episodio {number} di Pensieri in codice]({episode['url']}).\n"
     path = out_dir / f"article-{number}.md"
-    path.write_text(frontmatter(episode, number, model) + body + footer, encoding="utf-8")
+    # no link to the episode in the body: the site's disclosure under the title
+    # carries it, read from `episode` in the frontmatter
+    path.write_text(frontmatter(episode, number, model) + body + "\n", encoding="utf-8")
     print(f"[saved] {path}", file=sys.stderr)
     return True
 

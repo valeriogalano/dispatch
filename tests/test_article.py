@@ -102,7 +102,8 @@ class GenerateTests(unittest.TestCase):
             ))
             self.assertIn("[Runtime by Night](https://runtimeradio.com/podcast/runtime-by-night)", text)
             self.assertNotIn("gpt-4o", text)
-            self.assertTrue(text.endswith("[episodio 150 di Pensieri in codice](/episodes/150-un-episodio).\n"))
+            # the site links the episode from the disclosure under the title
+            self.assertTrue(text.endswith("ne parlo volentieri insieme a Edoardo.\n"))
 
             # an article is paid for once
             self.assertEqual([], article.missing_episodes(Path(tmp) / "website", out, since=0))

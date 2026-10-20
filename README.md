@@ -42,7 +42,7 @@ The chain runs again every hour between 19:00 and 22:00 UTC on Friday, to recove
 
 1. cleans the script without the AI: cues like `Sigla.` and `Buon ascolto.` go, and each `###### Name` header becomes `**Name:**` opening that speaker's turn;
 2. asks Engram, with the `articolo-episodio` role, to turn the spoken text into written prose, through the same providers as the recaps;
-3. writes the frontmatter (title, date and tags of the episode, `author: Valerio Galano`, `episode`, `curated_by`, `generated_with`) and a closing link to the episode, and reduces any link whose URL is not in the script or the episode `sources` to its text.
+3. writes the frontmatter (title, date and tags of the episode, `author: Valerio Galano`, `episode`, `curated_by`, `generated_with`; the site links the episode from the disclosure under the title), and reduces any link whose URL is not in the script or the episode `sources` to its text.
 
 Three checks block the article: its length must stay within 0.7-1.15 of the script, every proper noun must appear in the script, every URL must come from the script or the `sources`. A blocked article is saved as `output/article-NNN.rejected.md` with the reasons on top, the run goes red, and the episode is not retried until the file is removed or the episode is requested by number.
 
