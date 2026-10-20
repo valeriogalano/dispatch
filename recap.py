@@ -67,7 +67,13 @@ def _call_gemini(api_key: str, system: str, user: str) -> str:
         ),
     )
     text = (response.text or "").strip()
-    if response.candidates and response.candidates[0].finish_reason == "MAX_TOKENS":
+    finish = response.candidates[0].finish_reason if response.candidates else None
+    usage = getattr(response, "usage_metadata", None)
+    # the run log is where the real cost of a call is measured
+    print(f"  → usage: in={getattr(usage, 'prompt_token_count', None)} "
+          f"out={getattr(usage, 'candidates_token_count', None)} "
+          f"thinking={getattr(usage, 'thoughts_token_count', None)} stop={finish}", file=sys.stderr)
+    if finish == "MAX_TOKENS":
         raise Truncated(text)
     return text
 
@@ -86,6 +92,10 @@ def _call_claude(api_key: str, system: str, user: str) -> str:
         message = stream.get_final_message()
     # the model may open with a thinking block, which has no text: keep the text blocks
     text = "".join(b.text for b in message.content if b.type == "text").strip()
+    usage = getattr(message, "usage", None)
+    # the run log is where the real cost of a call is measured; out includes thinking
+    print(f"  → usage: in={getattr(usage, 'input_tokens', None)} "
+          f"out={getattr(usage, 'output_tokens', None)} stop={message.stop_reason}", file=sys.stderr)
     if message.stop_reason == "max_tokens":
         raise Truncated(text)
     return text
