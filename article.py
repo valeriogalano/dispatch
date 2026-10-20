@@ -31,6 +31,14 @@ FIRST_NEW_EPISODE = 151
 # ponytail: bounds picked by eye on the scripts, tune them on the first articles
 MIN_RATIO, MAX_RATIO = 0.6, 0.85  # the role asks for 60-80% of the script
 
+# decades and centuries are capitalised in Italian without being names, and the
+# script often writes them as digits: "anni '60" becomes "anni Sessanta"
+_NOT_NAMES = {
+    "Venti", "Trenta", "Quaranta", "Cinquanta", "Sessanta", "Settanta", "Ottanta", "Novanta",
+    "Duecento", "Trecento", "Quattrocento", "Cinquecento", "Seicento", "Settecento",
+    "Ottocento", "Novecento", "Duemila",
+}
+
 _SPOKEN_ONLY = re.compile(r"^(sigla|buon ascolto)[.!]?$", re.IGNORECASE)
 _SPEAKER = re.compile(r"^#{6}\s+(.+?)\s*$")
 
@@ -78,7 +86,7 @@ def check(article: str, script: str, allowed: str) -> list[str]:
     # ponytail: a proper noun is a capitalised word right after a lowercase word;
     # sentence openers are skipped, and so are names glued to an apostrophe
     names = set(re.findall(r"(?<=[a-zà-ù,;] )([A-ZÀ-Ý][\w’'-]*\w)", article))
-    if missing := sorted(n for n in names if n.lower() not in allowed.lower()):
+    if missing := sorted(n for n in names - _NOT_NAMES if n.lower() not in allowed.lower()):
         problems.append(f"names not in the script: {', '.join(missing)}")
     urls = set(re.findall(r"https?://[^\s)>\]\"]+", article))
     if invented := sorted(u for u in urls if u not in allowed):

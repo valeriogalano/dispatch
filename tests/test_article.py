@@ -79,6 +79,10 @@ class CheckTests(unittest.TestCase):
         invented = self.faithful + "Ne ho parlato anche con Marco."
         self.assertEqual(["names not in the script: Marco"], article.check(invented, self.script, self.script))
 
+        # 2026-10-20, episode 148: "anni '60" in the script, "anni Sessanta" in the article
+        decades = self.faithful + "Succedeva negli anni Sessanta e nel Novecento."
+        self.assertEqual([], article.check(decades, self.script, self.script))
+
         linked = self.faithful + "Vedi https://invented.example/x per altro."
         self.assertEqual(["URLs not in the sources: https://invented.example/x"],
                          article.check(linked, self.script, self.script))
