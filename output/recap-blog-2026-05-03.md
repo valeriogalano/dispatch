@@ -1,5 +1,3 @@
-_Questo recap è stato generato con gemini-3-flash-preview_
-
 ---
 title: "Sotto il cofano: l'evoluzione tecnica di Pensieri in codice"
 date: 2026-05-03T10:00:00+02:00
@@ -12,6 +10,8 @@ categories:
 - News
 type: blog
 author: Valerio Galano
+curated_by: Engram
+generated_with: gemini-3-flash-preview
 ---
 
 Hai presente quella sensazione di quando inizi a sistemare un piccolo cassetto e finisci, quasi senza accorgertene, per traslocare l'intera casa? Ecco, gli ultimi mesi sul codice di Pensieri in codice sono stati esattamente così. Tutto è partito da un dettaglio del player audio sul sito e, commit dopo commit, mi sono ritrovato a riscrivere l'esperienza di ascolto e gran parte delle automazioni che ruotano attorno al podcast.
