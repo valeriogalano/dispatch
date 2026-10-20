@@ -7,7 +7,7 @@ import recap
 
 
 class SignatureTests(unittest.TestCase):
-    def test_nothing_is_signed_and_the_disclosure_closes_both(self):
+    def test_nothing_is_signed_and_the_model_is_disclosed_once(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
             digest = out / "digest-2026-07-24.md"
@@ -16,11 +16,18 @@ class SignatureTests(unittest.TestCase):
             with patch.object(recap, "call_ai", return_value=("gemini-3.8-flash", "Testo del recap.")):
                 recap.generate_recap(digest, out, ["telegram", "blog"])
 
-            for name in ("recap-telegram-2026-07-24.md", "recap-blog-2026-07-24.md"):
-                text = (out / name).read_text(encoding="utf-8")
-                lines = [line for line in text.splitlines() if line.strip()]
-                self.assertEqual("_Generato con gemini-3.8-flash_", lines[-1], name)
-                self.assertNotIn("generato con", text.split("Testo del recap.")[0], name)
+            # Telegram has no template: the disclosure closes the post
+            text = (out / "recap-telegram-2026-07-24.md").read_text(encoding="utf-8")
+            lines = [line for line in text.splitlines() if line.strip()]
+            self.assertEqual("_Generato con gemini-3.8-flash_", lines[-1])
+            self.assertNotIn("generato con", text.split("Testo del recap.")[0])
+
+            # the site's template shows the model from the frontmatter: none in the body
+            blog = (out / "recap-blog-2026-07-24.md").read_text(encoding="utf-8")
+            frontmatter, body = blog.split("---\n\n", 1)
+            self.assertIn("curated_by: Engram\n", frontmatter)
+            self.assertIn("generated_with: gemini-3.8-flash\n", frontmatter)
+            self.assertEqual("Testo del recap.\n", body)
 
             # The channel shows the author line and the site shows the author box:
             # signing again is noise.
@@ -54,9 +61,12 @@ class SignatureTests(unittest.TestCase):
             for name in ("recap-telegram-2026-07-24.md", "recap-blog-2026-07-24.md"):
                 text = (out / name).read_text(encoding="utf-8")
                 self.assertNotIn("gpt-4o", text, name)
-                self.assertEqual(1, text.lower().count("generato con"), name)
-
                 self.assertNotIn("— Engram", text, name)
+
+            telegram = (out / "recap-telegram-2026-07-24.md").read_text(encoding="utf-8")
+            self.assertEqual(1, telegram.lower().count("generato con"))
+            blog = (out / "recap-blog-2026-07-24.md").read_text(encoding="utf-8")
+            self.assertNotIn("generato con", blog.lower())
 
 
 class ClaudeResponseTests(unittest.TestCase):
