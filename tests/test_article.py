@@ -18,6 +18,8 @@ Sigla.
 
 ###### Valerio
 Grazie Nox, ne parlo volentieri insieme a Edoardo.
+
+Grazie a tutti, ci sentiamo alla prossima puntata.
 "
 '''
 
@@ -54,25 +56,30 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(
             "## Introduzione\n\n"
             '**Nox:** Benvenuto Valerio, parliamo di "Runtime by Night".\n\n'
-            "**Valerio:** Grazie Nox, ne parlo volentieri insieme a Edoardo.",
+            "**Valerio:** Grazie Nox, ne parlo volentieri insieme a Edoardo.\n\n"
+            "Grazie a tutti, ci sentiamo alla prossima puntata.",
             script,
         )
 
 
 class CheckTests(unittest.TestCase):
-    script = "Ho parlato con Edoardo di Runtime by Night. " * 10
+    sentence = "Ho parlato con Edoardo di Runtime by Night. "
+    script = sentence * 10
+    # the role drops what belongs to listening: 60-80% of the script
+    faithful = sentence * 7
 
     def test_a_faithful_article_passes(self):
-        self.assertEqual([], article.check(self.script, self.script, self.script))
+        self.assertEqual([], article.check(self.faithful, self.script, self.script))
 
     def test_each_check_blocks_on_its_own(self):
-        problems = article.check(self.script[:40], self.script, self.script)
-        self.assertIn("length", problems[0])
+        for text in (self.sentence * 4, self.script):
+            with self.subTest(words=len(text.split())):
+                self.assertIn("length", article.check(text, self.script, self.script)[0])
 
-        invented = self.script + "Ne ho parlato anche con Marco."
+        invented = self.faithful + "Ne ho parlato anche con Marco."
         self.assertEqual(["names not in the script: Marco"], article.check(invented, self.script, self.script))
 
-        linked = self.script + "Vedi https://invented.example/x per altro."
+        linked = self.faithful + "Vedi https://invented.example/x per altro."
         self.assertEqual(["URLs not in the sources: https://invented.example/x"],
                          article.check(linked, self.script, self.script))
 

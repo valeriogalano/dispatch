@@ -29,7 +29,7 @@ Script:
 FIRST_NEW_EPISODE = 151
 
 # ponytail: bounds picked by eye on the scripts, tune them on the first articles
-MIN_RATIO, MAX_RATIO = 0.7, 1.15
+MIN_RATIO, MAX_RATIO = 0.6, 0.85  # the role asks for 60-80% of the script
 
 _SPOKEN_ONLY = re.compile(r"^(sigla|buon ascolto)[.!]?$", re.IGNORECASE)
 _SPEAKER = re.compile(r"^#{6}\s+(.+?)\s*$")
