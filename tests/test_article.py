@@ -100,6 +100,9 @@ class GenerateTests(unittest.TestCase):
                 "type: blog\nauthor: Valerio Galano\nepisode: 150\n"
                 "curated_by: Engram\ngenerated_with: claude-sonnet-5-5\n---\n\n## Introduzione"
             ))
+            # the site's template looks the episode page up by number: a quoted
+            # "150" finds nothing and the link under the title disappears
+            self.assertEqual(150, article.yaml.safe_load(text.split("---\n")[1])["episode"])
             self.assertIn("[Runtime by Night](https://runtimeradio.com/podcast/runtime-by-night)", text)
             self.assertNotIn("gpt-4o", text)
             # the site links the episode from the disclosure under the title
