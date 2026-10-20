@@ -46,7 +46,7 @@ The chain runs again every hour between 19:00 and 22:00 UTC on Friday, to recove
 
 Three checks block the article: its length must stay within 0.7-1.15 of the script, every proper noun must appear in the script, every URL must come from the script or the `sources`. A blocked article is saved as `output/article-NNN.rejected.md` with the reasons on top, the run goes red, and the episode is not retried until the file is removed or the episode is requested by number.
 
-The workflow runs on a `repository_dispatch` of type `episode-script` from the website (`{"episode": NNN}`), by hand with a list of episode numbers, and every day at 03:00 UTC, before the website build, for the newest episode with a script and no article. It commits the article and opens a PR on the website with `content/blog/episodio-NNN.md`; the PR is merged by hand. The provider order comes from the `ARTICLE_AI_PROVIDER` variable, falling back to `AI_PROVIDER`.
+The workflow runs on a `repository_dispatch` of type `episode-script` from the website (`{"episode": NNN}`), by hand with a list of episode numbers, and every day at 03:00 UTC, before the website build, for the newest episode with a script and no article. The daily run only looks at episodes from 151 on (`FIRST_NEW_EPISODE`, overridable with `--since`): the older ones are a backfill, run by hand by listing their numbers. It commits the article and opens a PR on the website with `content/blog/episodio-NNN.md`; the PR is merged by hand. The provider order comes from the `ARTICLE_AI_PROVIDER` variable, falling back to `AI_PROVIDER`.
 
 ```bash
 python article.py --website ~/PhpstormProjects/pensieriincodice-website 150

@@ -24,6 +24,10 @@ Script:
 {script}
 """
 
+# the first episode after the pipeline went live: the 82 older ones are a backfill
+# run by hand, not something the nightly job should work through
+FIRST_NEW_EPISODE = 151
+
 # ponytail: bounds picked by eye on the scripts, tune them on the first articles
 MIN_RATIO, MAX_RATIO = 0.7, 1.15
 
@@ -128,13 +132,14 @@ def generate_article(website: Path, number: int, out_dir: Path) -> bool:
     return True
 
 
-def missing_episodes(website: Path, out_dir: Path) -> list[int]:
+def missing_episodes(website: Path, out_dir: Path, since: int = FIRST_NEW_EPISODE) -> list[int]:
     """Episodes with a script and a page but no article yet, rejected ones included,
     newest first: the episode that just came out matters more than the backlog.
     The older scripts are .json transcripts without punctuation: only .yml count."""
     numbers = sorted((int(p.stem[3:]) for p in (website / "data" / "scripts").glob("PIC*.yml")), reverse=True)
     return [n for n in numbers
-            if (website / "content" / "podcast" / f"{n}.md").exists()
+            if n >= since
+            and (website / "content" / "podcast" / f"{n}.md").exists()
             and not list(out_dir.glob(f"article-{n}.*md"))]
 
 
@@ -144,6 +149,8 @@ def main():
     parser.add_argument("--website", required=True, help="Checkout of pensieriincodice-website")
     parser.add_argument("--missing", action="store_true", help="Every episode with a script and no article")
     parser.add_argument("--limit", type=int, default=0, help="With --missing, at most this many (0: no limit)")
+    parser.add_argument("--since", type=int, default=FIRST_NEW_EPISODE,
+                        help=f"With --missing, only episodes from this number on (default: {FIRST_NEW_EPISODE})")
     parser.add_argument("--output-dir", default="output", help="Output directory (default: output)")
     args = parser.parse_args()
 
@@ -152,7 +159,7 @@ def main():
 
     episodes = args.episodes
     if args.missing or not episodes:
-        episodes = missing_episodes(website, out_dir)[:args.limit or None]
+        episodes = missing_episodes(website, out_dir, args.since)[:args.limit or None]
 
     ok = True
     for number in episodes:

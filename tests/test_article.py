@@ -105,7 +105,7 @@ class GenerateTests(unittest.TestCase):
             self.assertTrue(text.endswith("[episodio 150 di Pensieri in codice](/episodes/150-un-episodio).\n"))
 
             # an article is paid for once
-            self.assertEqual([], article.missing_episodes(Path(tmp) / "website", out))
+            self.assertEqual([], article.missing_episodes(Path(tmp) / "website", out, since=0))
 
     def test_a_failed_check_keeps_the_text_aside_and_publishes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -116,4 +116,19 @@ class GenerateTests(unittest.TestCase):
 
             self.assertFalse((out / "article-150.md").exists())
             self.assertIn("Marco", (out / "article-150.rejected.md").read_text(encoding="utf-8"))
-            self.assertEqual([], article.missing_episodes(Path(tmp) / "website", out))
+            self.assertEqual([], article.missing_episodes(Path(tmp) / "website", out, since=0))
+
+
+class MissingTests(unittest.TestCase):
+    def test_the_nightly_run_leaves_the_backlog_alone(self):
+        # the 82 older episodes are a backfill run by hand: only new ones count
+        with tempfile.TemporaryDirectory() as tmp:
+            root = website(tmp)
+            for n in (149, 151, 152):
+                (root / "data" / "scripts" / f"PIC{n}.yml").write_text(SCRIPT, encoding="utf-8")
+                (root / "content" / "podcast" / f"{n}.md").write_text(EPISODE, encoding="utf-8")
+            out = Path(tmp) / "output"
+            out.mkdir()
+
+            self.assertEqual([152, 151], article.missing_episodes(root, out))
+            self.assertEqual([152, 151, 150, 149], article.missing_episodes(root, out, since=0))
