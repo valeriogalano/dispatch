@@ -53,6 +53,21 @@ python article.py --website ~/PhpstormProjects/pensieriincodice-website 150
 python article.py --website ~/PhpstormProjects/pensieriincodice-website --missing --limit 1
 ```
 
+#### Writing articles outside the API
+
+The backlog of older episodes is written in a Claude Code session instead of through the API, but still goes through the pipeline:
+
+```bash
+# 1. the exact system and user messages call_ai would send, no model called
+python article.py --website ~/PhpstormProjects/pensieriincodice-website --export-prompt 149 --out /tmp/pic149
+# 2. write the article body from those two files, in the session, into /tmp/pic149/article.md
+# 3. the same cleaning, frontmatter and blocking checks as a model answer:
+#    output/article-149.md, or output/article-149.rejected.md with the reasons
+python article.py --website ~/PhpstormProjects/pensieriincodice-website --import-text 149 --text /tmp/pic149/article.md --model claude-sonnet-5-5
+```
+
+An existing `output/article-NNN.md` is never overwritten by an import. Once the imported articles of a batch are committed and pushed, run **Generate Episode Article** by hand with `publish` set to their numbers (`149,148,147`): it skips generation and opens one PR on the website with all of them.
+
 ### Manual updates (`manual/`)
 
 Things done outside git — a podcast episode, an article, a release — go in `manual/YYYY-MM-DD.md`, named with the date they happened. Notes falling inside the digest window are appended to the digest under `## Manual updates` as raw material, and interpreted by the AI together with the commits. See `manual/README.md`.

@@ -158,3 +158,50 @@ class MissingTests(unittest.TestCase):
 
             self.assertEqual([152, 151], article.missing_episodes(root, out))
             self.assertEqual([152, 151, 150, 149], article.missing_episodes(root, out, since=0))
+
+
+class ExportImportTests(unittest.TestCase):
+    # the backlog is written in a Claude Code session, not through the API: the
+    # session gets exactly the messages call_ai would send, and its text goes
+    # through exactly what a model answer goes through
+    def test_the_exported_prompt_is_what_call_ai_receives(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, out = website(tmp), Path(tmp) / "prompt"
+            article.export_prompt(root, 150, out)
+
+            with patch.object(article, "call_ai", return_value=("m", GenerateTests.body)) as call:
+                article.generate_article(root, 150, Path(tmp))
+
+            system, user = call.call_args.args
+            self.assertEqual(system.encode("utf-8"), (out / "system.md").read_bytes())
+            self.assertEqual(user.encode("utf-8"), (out / "user.md").read_bytes())
+
+    def test_an_imported_text_is_checked_and_saved_like_a_model_answer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, out = website(tmp), Path(tmp) / "output"
+            out.mkdir()
+            text = Path(tmp) / "body.md"
+            text.write_text(GenerateTests.body, encoding="utf-8")
+
+            self.assertTrue(article.import_text(root, 150, text, "claude-sonnet-5-5 (Claude Code)", out))
+
+            saved = (out / "article-150.md").read_text(encoding="utf-8")
+            self.assertIn("generated_with: claude-sonnet-5-5 (Claude Code)\n", saved)
+            self.assertNotIn("gpt-4o", saved)  # the trailer is stripped as for the API
+
+            # a published article is never overwritten by a second import
+            text.write_text("Corto.", encoding="utf-8")
+            self.assertTrue(article.import_text(root, 150, text, "m", out))
+            self.assertEqual(saved, (out / "article-150.md").read_text(encoding="utf-8"))
+
+    def test_an_imported_text_too_short_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, out = website(tmp), Path(tmp) / "output"
+            out.mkdir()
+            text = Path(tmp) / "body.md"
+            text.write_text("**Nox:** Benvenuto Valerio.", encoding="utf-8")
+
+            self.assertFalse(article.import_text(root, 150, text, "m", out))
+
+            self.assertFalse((out / "article-150.md").exists())
+            self.assertIn("length", (out / "article-150.rejected.md").read_text(encoding="utf-8"))

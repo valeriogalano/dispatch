@@ -11,6 +11,10 @@ on:
         description: "Episode numbers, comma-separated; leave empty for the missing ones"
         required: false
         default: ""
+      publish:
+        description: "Only publish: episode numbers whose articles are already in output/, comma-separated (one PR, no AI)"
+        required: false
+        default: ""
   # before the website's 04:00 UTC build, catching any dispatch that went missing
   schedule:
     - cron: "0 3 * * *"
@@ -59,6 +63,7 @@ jobs:
       # included: a re-run never pays for the AI twice
       - name: Run article.py
         id: generate
+        if: ${{ !github.event.inputs.publish }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -74,6 +79,7 @@ jobs:
 
       - name: Commit article files
         id: commit
+        if: ${{ !github.event.inputs.publish }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -87,12 +93,31 @@ jobs:
           git pull --rebase --no-recurse-submodules
           git push
 
+      # articles written in a Claude Code session and imported with
+      # `article.py --import-text` are already committed: they only need the PR
+      - name: List the articles to publish
+        id: publish
+        if: ${{ github.event.inputs.publish }}
+        env:
+          PUBLISH: ${{ github.event.inputs.publish }}
+        run: |
+          NEW=""
+          for N in $(echo "$PUBLISH" | tr ',' ' '); do
+            F="output/article-${N}.md"
+            if [ ! -f "$F" ]; then
+              echo "[error] $F not found: import and commit it first" >&2
+              exit 1
+            fi
+            NEW="$NEW $F"
+          done
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
       # the PR is opened, not merged: an article speaks with Valerio's voice
       - name: Open a PR on the website with the new articles
-        if: ${{ steps.commit.outputs.new != '' }}
+        if: ${{ steps.commit.outputs.new != '' || steps.publish.outputs.new != '' }}
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          NEW: ${{ steps.commit.outputs.new }}
+          NEW: ${{ steps.commit.outputs.new || steps.publish.outputs.new }}
         run: |
           REPO="valeriogalano/pensieriincodice-website"
           NUMBERS=""
