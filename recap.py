@@ -43,6 +43,17 @@ Ecco il digest del periodo. Scrivi il post per il blog, seguendo le regole del f
 """
 
 
+class Truncated(Exception):
+    """The model stopped at its output limit: the text ends mid-sentence.
+
+    Never retried: the same request would stop at the same place, and paying
+    for it twice to get a cut text is worse than failing."""
+
+    def __init__(self, text: str, model: str = ""):
+        super().__init__("the model hit its output limit: the text is cut short")
+        self.text, self.model = text, model
+
+
 def _call_gemini(api_key: str, system: str, user: str) -> str:
     # imported lazily so that running with AI_PROVIDER=anthropic needs no google-genai
     from google import genai
@@ -55,21 +66,29 @@ def _call_gemini(api_key: str, system: str, user: str) -> str:
             temperature=0.8,
         ),
     )
-    return response.text.strip()
+    text = (response.text or "").strip()
+    if response.candidates and response.candidates[0].finish_reason == "MAX_TOKENS":
+        raise Truncated(text)
+    return text
 
 
 def _call_claude(api_key: str, system: str, user: str) -> str:
     from anthropic import Anthropic
     client = Anthropic(api_key=api_key)
-    message = client.messages.create(
+    # thinking is on by default and spends the same max_tokens as the text: at
+    # 16000 the 149 article stopped mid-word. Above ~16k the SDK wants streaming.
+    with client.messages.stream(
         model=CLAUDE_MODEL,
-        # an article is as long as the episode script: 4096 cut it short
-        max_tokens=16000,
+        max_tokens=64000,
         system=system,
         messages=[{"role": "user", "content": user}],
-    )
+    ) as stream:
+        message = stream.get_final_message()
     # the model may open with a thinking block, which has no text: keep the text blocks
-    return "".join(b.text for b in message.content if b.type == "text").strip()
+    text = "".join(b.text for b in message.content if b.type == "text").strip()
+    if message.stop_reason == "max_tokens":
+        raise Truncated(text)
+    return text
 
 
 def _get_providers() -> list[str]:
@@ -105,6 +124,9 @@ def call_ai(system: str, user: str) -> tuple[str, str]:
         for attempt in range(1, _MAX_RETRIES_PER_PROVIDER + 1):
             try:
                 return model, call(key, system, user)
+            except Truncated as e:
+                e.model = model
+                raise
             except Exception as e:
                 print(f"  → error with {provider} (attempt {attempt}/{_MAX_RETRIES_PER_PROVIDER}): {e}", file=sys.stderr)
                 if attempt < _MAX_RETRIES_PER_PROVIDER:

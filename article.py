@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from recap import call_ai, drop_invented_links, engram_system, strip_trailer
+from recap import Truncated, call_ai, drop_invented_links, engram_system, strip_trailer
 
 SYSTEM = engram_system("articolo-episodio")
 
@@ -111,15 +111,20 @@ def generate_article(website: Path, number: int, out_dir: Path) -> bool:
     allowed = "\n".join([script, episode["title"]] + [f"{s.get('title', '')} {s['url']}" for s in sources])
 
     print(f"Episode {number}: {episode['title']}", file=sys.stderr)
-    model, text = call_ai(SYSTEM, USER.format(
-        number=number,
-        title=episode["title"],
-        sources="\n".join(f"- {s.get('title', s['url'])}: {s['url']}" for s in sources) or "(nessuna)",
-        script=script,
-    ))
+    try:
+        model, text = call_ai(SYSTEM, USER.format(
+            number=number,
+            title=episode["title"],
+            sources="\n".join(f"- {s.get('title', s['url'])}: {s['url']}" for s in sources) or "(nessuna)",
+            script=script,
+        ))
+        cut = []
+    except Truncated as e:
+        # 2026-10-20: the 149 article ended mid-word and still passed the length check
+        model, text, cut = e.model, e.text, [str(e)]
     body = drop_invented_links(strip_trailer(text), allowed)
 
-    if problems := check(body, script, allowed):
+    if problems := cut + check(body, script, allowed):
         path = out_dir / f"article-{number}.rejected.md"
         path.write_text("\n".join(f"<!-- {p} -->" for p in problems) + f"\n\n{body}\n", encoding="utf-8")
         print(f"[rejected] {path}: " + "; ".join(problems), file=sys.stderr)

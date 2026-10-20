@@ -111,6 +111,21 @@ class GenerateTests(unittest.TestCase):
             # an article is paid for once
             self.assertEqual([], article.missing_episodes(Path(tmp) / "website", out, since=0))
 
+    def test_a_truncated_answer_is_rejected_even_within_the_length_bounds(self):
+        # 2026-10-20: episode 149 stopped mid-word at 0.89 of the script, inside
+        # the length bounds, and was published as complete
+        cut = article.Truncated(self.body.split("_Generato")[0].rstrip() + " del doppia", "claude-sonnet-5-5")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "output"
+            out.mkdir()
+            with patch.object(article, "call_ai", side_effect=cut):
+                self.assertFalse(article.generate_article(website(tmp), 150, out))
+
+            self.assertFalse((out / "article-150.md").exists())
+            rejected = (out / "article-150.rejected.md").read_text(encoding="utf-8")
+            self.assertIn("output limit", rejected)
+            self.assertIn("del doppia", rejected)
+
     def test_a_failed_check_keeps_the_text_aside_and_publishes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "output"

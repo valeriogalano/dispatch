@@ -86,21 +86,71 @@ class TitleTests(unittest.TestCase):
             self.assertIn('title: "Diario di Engram – 4 dicembre 2026"\n', blog)
 
 
+def _claude_client(message):
+    from unittest.mock import MagicMock
+    client = MagicMock()
+    client.messages.stream.return_value.__enter__.return_value.get_final_message.return_value = message
+    return client
+
+
 class ClaudeResponseTests(unittest.TestCase):
     def test_a_leading_thinking_block_is_skipped(self):
         # claude-sonnet-5-5 answers with a thinking block first, which has no text:
         # reading content[0].text crashed every attempt.
         from types import SimpleNamespace
-        from unittest.mock import MagicMock
 
-        message = SimpleNamespace(content=[
+        message = SimpleNamespace(stop_reason="end_turn", content=[
             SimpleNamespace(type="thinking"),
             SimpleNamespace(type="text", text=" Testo del recap. "),
         ])
-        client = MagicMock()
-        client.messages.create.return_value = message
-        with patch("anthropic.Anthropic", return_value=client):
+        with patch("anthropic.Anthropic", return_value=_claude_client(message)):
             self.assertEqual("Testo del recap.", recap._call_claude("key", "system", "user"))
+
+
+class TruncationTests(unittest.TestCase):
+    # 2026-10-20: the episode 149 article stopped mid-word at max_tokens, thinking
+    # included, and was saved as if complete.
+    def test_claude_stopping_at_max_tokens_is_an_error(self):
+        from types import SimpleNamespace
+
+        message = SimpleNamespace(stop_reason="max_tokens", content=[
+            SimpleNamespace(type="text", text="del panorama del doppia"),
+        ])
+        with patch("anthropic.Anthropic", return_value=_claude_client(message)):
+            with self.assertRaises(recap.Truncated) as cm:
+                recap._call_claude("key", "system", "user")
+        self.assertEqual("del panorama del doppia", cm.exception.text)
+
+    def test_gemini_stopping_at_max_tokens_is_an_error(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        client = MagicMock()
+        client.models.generate_content.return_value = SimpleNamespace(
+            text="del panorama del doppia",
+            candidates=[SimpleNamespace(finish_reason="MAX_TOKENS")],
+        )
+        with patch("google.genai.Client", return_value=client):
+            with self.assertRaises(recap.Truncated):
+                recap._call_gemini("key", "system", "user")
+
+    def test_a_truncated_answer_is_not_retried_nor_failed_over(self):
+        # the same request stops at the same place: paying again buys nothing
+        calls = []
+
+        def cut(key, system, user):
+            calls.append(key)
+            raise recap.Truncated("testo a metà")
+
+        env = {"AI_PROVIDER": "anthropic,google", "ANTHROPIC_API_KEY": "k", "GEMINI_API_KEY": "g"}
+        with patch.dict("os.environ", env, clear=True), \
+                patch.dict(recap._PROVIDERS, {"anthropic": ("ANTHROPIC_API_KEY", "claude-x", cut),
+                                              "google": ("GEMINI_API_KEY", "gemini-x", cut)}), \
+                patch.object(recap.time, "sleep", side_effect=AssertionError("must not sleep")):
+            with self.assertRaises(recap.Truncated) as cm:
+                recap.call_ai("system", "user")
+        self.assertEqual(["k"], calls)
+        self.assertEqual("claude-x", cm.exception.model)
 
 
 class LinkTests(unittest.TestCase):
