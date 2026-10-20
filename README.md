@@ -1,7 +1,9 @@
 # Dispatch
 
-Automated weekly digest of GitHub activity across personal projects, saved as Markdown and browsable directly on GitHub.
-After the digest is collected, two AI-generated recaps are produced via Gemini: one for Telegram and one for the Pensieri in codice blog.
+Where Engram, the voice of the generated texts of Pensieri in codice, writes for the blog and for Telegram.
+
+- A **weekly digest** of GitHub activity across personal projects, saved as Markdown and browsable directly on GitHub, turned into two AI-generated recaps: one for Telegram and one for the blog.
+- An **article for each podcast episode**, adapted from the episode script and published on the blog under Valerio's name.
 
 ## Features
 
@@ -9,7 +11,7 @@ After the digest is collected, two AI-generated recaps are produced via Gemini: 
 - **Smart Categorization**: Groups commits by [Conventional Commits](https://www.conventionalcommits.org/) prefixes (feat, fix, etc.).
 - **AI-Powered Summaries**: Uses Google Gemini (`gemini-3.8-flash`), with Anthropic Claude (`claude-sonnet-5-5`) as fallback, to generate:
   - **Telegram Posts**: Schematic, emoji-rich updates tailored for technical channels.
-  - **Blog Articles**: Narrative, SEO-friendly posts with Hugo frontmatter.
+  - **Blog Articles**: Narrative, SEO-friendly posts with Hugo frontmatter, which names the model in `generated_with` for the site to show; Telegram posts close with the disclosure instead.
 - **Multi-Platform Publishing**:
   - Automatically opens and merges PRs on a Hugo website.
   - Sends formatted messages to Telegram via Bot API.
@@ -33,6 +35,23 @@ Every Friday at 18:00 UTC:
 All files are committed back to the repository automatically.
 
 The chain runs again every hour between 19:00 and 22:00 UTC on Friday, to recover from a failed run without a manual re-run. Every stage is a no-op once it went through: a scheduled run that finds a digest dated today or yesterday does not collect again (GitHub may start the last retry after midnight UTC, under Saturday's date), the recap workflows skip the AI call when the file for that date exists, the website publication reuses the open PR, and `publish_telegram.py` records a marker in `output/sent/` and refuses to send the same recap twice.
+
+### Episode articles (`generate-article.yml`)
+
+`article.py` adapts the script of an episode into a blog article. It reads `data/scripts/PICNNN.yml` and the frontmatter of `content/podcast/NNN.md` from a checkout of `pensieriincodice-website`, then:
+
+1. cleans the script without the AI: cues like `Sigla.` and `Buon ascolto.` go, and each `###### Name` header becomes `**Name:**` opening that speaker's turn;
+2. asks Engram, with the `articolo-episodio` role, to turn the spoken text into written prose, through the same providers as the recaps;
+3. writes the frontmatter (title, date and tags of the episode, `author: Valerio Galano`, `episode`, `curated_by`, `generated_with`) and a closing link to the episode, and reduces any link whose URL is not in the script or the episode `sources` to its text.
+
+Three checks block the article: its length must stay within 0.7-1.15 of the script, every proper noun must appear in the script, every URL must come from the script or the `sources`. A blocked article is saved as `output/article-NNN.rejected.md` with the reasons on top, the run goes red, and the episode is not retried until the file is removed or the episode is requested by number.
+
+The workflow runs on a `repository_dispatch` of type `episode-script` from the website (`{"episode": NNN}`), by hand with a list of episode numbers, and every day at 03:00 UTC, before the website build, for the newest episode with a script and no article. It commits the article and opens a PR on the website with `content/blog/episodio-NNN.md`; the PR is merged by hand. The provider order comes from the `ARTICLE_AI_PROVIDER` variable, falling back to `AI_PROVIDER`.
+
+```bash
+python article.py --website ~/PhpstormProjects/pensieriincodice-website 150
+python article.py --website ~/PhpstormProjects/pensieriincodice-website --missing --limit 1
+```
 
 ### Manual updates (`manual/`)
 
@@ -79,6 +98,7 @@ The optional `host:` prefix supports `codeberg` (public repos only, no token nee
 | `GEMINI_API_KEY` | Secret | Google Gemini API key |
 | `ANTHROPIC_API_KEY` | Secret | Anthropic API key, used as fallback when Gemini fails |
 | `AI_PROVIDER` | Variable | Optional, comma-separated provider order (default `google,anthropic`) |
+| `ARTICLE_AI_PROVIDER` | Variable | Optional, provider order for the episode articles only (default: `AI_PROVIDER`) |
 | `TELEGRAM_BOT_TOKEN` | Secret | Telegram bot token |
 | `TELEGRAM_CHAT_ID` | Variable | Telegram chat/channel ID where the recap is published |
 

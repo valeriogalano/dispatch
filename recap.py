@@ -63,7 +63,8 @@ def _call_claude(api_key: str, system: str, user: str) -> str:
     client = Anthropic(api_key=api_key)
     message = client.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=4096,
+        # an article is as long as the episode script: 4096 cut it short
+        max_tokens=16000,
         system=system,
         messages=[{"role": "user", "content": user}],
     )
