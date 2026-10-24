@@ -1,5 +1,3 @@
-<!-- length is 0.92 of the script, expected 0.6-0.85 -->
-
 Sono ormai parecchi mesi che utilizzo intensamente e con soddisfazione vari strumenti di Intelligenza Artificiale agentica e devo dire che questa tecnologia ha cambiato profondamente alcuni aspetti del mio lavoro e del mio modo di fare le cose in generale.
 
 Tra questi cambiamenti, uno che inizialmente mi era passato un po' in sordina e del quale mi sono reso conto solo in un secondo momento, così, all'improvviso, è il modo in cui utilizzo il mio Second Brain.
