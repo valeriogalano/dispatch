@@ -28,8 +28,12 @@ Script:
 # run by hand, not something the nightly job should work through
 FIRST_NEW_EPISODE = 151
 
-# ponytail: bounds picked by eye on the scripts, tune them on the first articles
-MIN_RATIO, MAX_RATIO = 0.6, 0.85  # the role asks for 60-80% of the script
+# measured on the script without its listening-only sections (see `without_listening_sections`):
+# the articles of 148, 149 and 151 come out at 0.94, 0.99 and 1.00 of it
+MIN_RATIO, MAX_RATIO = 0.8, 1.1
+
+# sections that exist only for the ear: greetings, podcast news, farewells and supporters
+_LISTENING_SECTION = re.compile(r"^## (introduzione|conclusione|.*novit)", re.IGNORECASE)
 
 # decades and centuries are capitalised in Italian without being names, and the
 # script often writes them as digits: "anni '60" becomes "anni Sessanta"
@@ -69,6 +73,18 @@ def clean_script(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
 
 
+def without_listening_sections(script: str) -> str:
+    """The script the article is measured against: the role drops these sections
+    whole, so counting them would make a faithful article look short."""
+    out, skip = [], False
+    for line in script.splitlines():
+        if line.startswith("## "):
+            skip = bool(_LISTENING_SECTION.match(line))
+        if not skip:
+            out.append(line)
+    return "\n".join(out)
+
+
 def read_episode(website: Path, number: int) -> dict:
     """Frontmatter of the episode page. BaseLoader keeps every value a string, so
     the date is copied to the article exactly as the episode carries it."""
@@ -80,7 +96,7 @@ def check(article: str, script: str, allowed: str) -> list[str]:
     """Reasons to hold the article back. Any one is enough: an article that
     misquotes an episode under Valerio's name is worse than no article."""
     problems = []
-    ratio = len(article.split()) / max(len(script.split()), 1)
+    ratio = len(article.split()) / max(len(without_listening_sections(script).split()), 1)
     if not MIN_RATIO <= ratio <= MAX_RATIO:
         problems.append(f"length is {ratio:.2f} of the script, expected {MIN_RATIO}-{MAX_RATIO}")
     # ponytail: a proper noun is a capitalised word right after a lowercase word;
