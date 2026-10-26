@@ -1,7 +1,6 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 import article
 
@@ -48,6 +47,12 @@ def website(tmp: str) -> Path:
     (root / "data" / "scripts" / "PIC150.yml").write_text(SCRIPT, encoding="utf-8")
     (root / "content" / "podcast" / "150.md").write_text(EPISODE, encoding="utf-8")
     return root
+
+
+def write(tmp: str, body: str) -> Path:
+    path = Path(tmp) / "body.md"
+    path.write_text(body, encoding="utf-8")
+    return path
 
 
 class ScriptTests(unittest.TestCase):
@@ -109,8 +114,7 @@ class GenerateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "output"
             out.mkdir()
-            with patch.object(article, "call_ai", return_value=("claude-sonnet-5-5", self.body)):
-                self.assertTrue(article.generate_article(website(tmp), 150, out))
+            self.assertTrue(article.import_text(website(tmp), 150, write(tmp, self.body), "claude-sonnet-5-5", out))
 
             text = (out / "article-150.md").read_text(encoding="utf-8")
             self.assertTrue(text.startswith(
@@ -128,65 +132,24 @@ class GenerateTests(unittest.TestCase):
             # the site links the episode from the disclosure under the title
             self.assertTrue(text.endswith("ne parlo volentieri insieme a Edoardo.\n"))
 
-            # an article is paid for once
-            self.assertEqual([], article.missing_episodes(Path(tmp) / "website", out, since=0))
-
-    def test_a_truncated_answer_is_rejected_even_within_the_length_bounds(self):
-        # 2026-10-20: episode 149 stopped mid-word at 0.89 of the script, inside
-        # the length bounds, and was published as complete
-        cut = article.Truncated(self.body.split("_Generato")[0].rstrip() + " del doppia", "claude-sonnet-5-5")
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "output"
-            out.mkdir()
-            with patch.object(article, "call_ai", side_effect=cut):
-                self.assertFalse(article.generate_article(website(tmp), 150, out))
-
-            self.assertFalse((out / "article-150.md").exists())
-            rejected = (out / "article-150.rejected.md").read_text(encoding="utf-8")
-            self.assertIn("output limit", rejected)
-            self.assertIn("del doppia", rejected)
-
     def test_a_failed_check_keeps_the_text_aside_and_publishes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "output"
             out.mkdir()
-            with patch.object(article, "call_ai", return_value=("m", self.body + "\n\nCiao da Marco.")):
-                self.assertFalse(article.generate_article(website(tmp), 150, out))
+            self.assertFalse(article.import_text(website(tmp), 150, write(tmp, self.body + "\n\nCiao da Marco."), "m", out))
 
             self.assertFalse((out / "article-150.md").exists())
             self.assertIn("Marco", (out / "article-150.rejected.md").read_text(encoding="utf-8"))
-            self.assertEqual([], article.missing_episodes(Path(tmp) / "website", out, since=0))
-
-
-class MissingTests(unittest.TestCase):
-    def test_the_nightly_run_leaves_the_backlog_alone(self):
-        # the 82 older episodes are a backfill run by hand: only new ones count
-        with tempfile.TemporaryDirectory() as tmp:
-            root = website(tmp)
-            for n in (149, 151, 152):
-                (root / "data" / "scripts" / f"PIC{n}.yml").write_text(SCRIPT, encoding="utf-8")
-                (root / "content" / "podcast" / f"{n}.md").write_text(EPISODE, encoding="utf-8")
-            out = Path(tmp) / "output"
-            out.mkdir()
-
-            self.assertEqual([152, 151], article.missing_episodes(root, out))
-            self.assertEqual([152, 151, 150, 149], article.missing_episodes(root, out, since=0))
 
 
 class ExportImportTests(unittest.TestCase):
-    # the backlog is written in a Claude Code session, not through the API: the
-    # session gets exactly the messages call_ai would send, and its text goes
-    # through exactly what a model answer goes through
-    def test_the_exported_prompt_is_what_call_ai_receives(self):
+    def test_the_exported_prompt_is_what_the_session_is_asked(self):
         with tempfile.TemporaryDirectory() as tmp:
             root, out = website(tmp), Path(tmp) / "prompt"
             article.export_prompt(root, 150, out)
 
-            with patch.object(article, "call_ai", return_value=("m", GenerateTests.body)) as call:
-                article.generate_article(root, 150, Path(tmp))
-
-            system, user = call.call_args.args
-            self.assertEqual(system.encode("utf-8"), (out / "system.md").read_bytes())
+            _, _, _, user = article.prepare(root, 150)
+            self.assertEqual(article.SYSTEM.encode("utf-8"), (out / "system.md").read_bytes())
             self.assertEqual(user.encode("utf-8"), (out / "user.md").read_bytes())
 
     def test_an_imported_text_is_checked_and_saved_like_a_model_answer(self):

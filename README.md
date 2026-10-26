@@ -41,32 +41,26 @@ The chain runs again every hour between 19:00 and 22:00 UTC on Friday, to recove
 `article.py` adapts the script of an episode into a blog article. It reads `data/scripts/PICNNN.yml` and the frontmatter of `content/podcast/NNN.md` from a checkout of `pensieriincodice-website`, then:
 
 1. cleans the script without the AI: cues like `Sigla.` and `Buon ascolto.` go, and each `###### Name` header becomes `**Name:**` opening that speaker's turn;
-2. asks Engram, with the `articolo-episodio` role, to turn the spoken text into written prose, through the same providers as the recaps;
-3. writes the frontmatter (title, date and tags of the episode, `author: Valerio Galano`, `episode`, `curated_by`, `generated_with`; the site links the episode from the disclosure under the title), and reduces any link whose URL is not in the script or the episode `sources` to its text.
+2. hands Engram's `articolo-episodio` role and the cleaned script to a Claude Code session (`--export-prompt`), which turns the spoken text into written prose;
+3. on `--import-text`, writes the frontmatter (title, date and tags of the episode, `author: Valerio Galano`, `episode`, `curated_by`, `generated_with`; the site links the episode from the disclosure under the title), and reduces any link whose URL is not in the script or the episode `sources` to its text.
 
-Four checks block the article: the model must not stop at its output limit (a cut text is never retried, on any provider), its length must stay within 0.6-0.85 of the script (the role asks for 60-80%, without what belongs to listening), every proper noun must appear in the script, every URL must come from the script or the `sources`. A blocked article is saved as `output/article-NNN.rejected.md` with the reasons on top, the run goes red, and the episode is not retried until the file is removed or the episode is requested by number.
+Three checks block the article: its length must stay within 0.8-1.1 of the script without the listening-only sections (`Introduzione`, `Conclusione` and the podcast news), every proper noun must appear in the script, every URL must come from the script or the `sources`. A blocked article is saved as `output/article-NNN.rejected.md` with the reasons on top, and the import exits non-zero.
 
-The workflow runs on a `repository_dispatch` of type `episode-script` from the website (`{"episode": NNN}`), by hand with a list of episode numbers, and every day at 03:00 UTC, before the website build, for the newest episode with a script and no article. The daily run only looks at episodes from 151 on (`FIRST_NEW_EPISODE`, overridable with `--since`): the older ones are a backfill, run by hand by listing their numbers. It commits the article and opens a PR on the website with `content/blog/episodio-NNN.md`; the PR is merged by hand. The provider order comes from the `ARTICLE_AI_PROVIDER` variable, falling back to `AI_PROVIDER`.
+Nothing generates articles on its own: each one is written in a Claude Code session, from the script, at the end of the episode's production. The **Generate Episode Article** workflow only publishes them, as described below.
 
-```bash
-python article.py --website ~/PhpstormProjects/pensieriincodice-website 150
-python article.py --website ~/PhpstormProjects/pensieriincodice-website --missing --limit 1
-```
+#### Writing an article
 
-#### Writing articles outside the API
-
-The backlog of older episodes is written in a Claude Code session instead of through the API, but still goes through the pipeline:
 
 ```bash
-# 1. the exact system and user messages call_ai would send, no model called
+# 1. the system and user messages for the session, no model called
 python article.py --website ~/PhpstormProjects/pensieriincodice-website --export-prompt 149 --out /tmp/pic149
 # 2. write the article body from those two files, in the session, into /tmp/pic149/article.md
-# 3. the same cleaning, frontmatter and blocking checks as a model answer:
+# 3. cleaning, frontmatter and blocking checks:
 #    output/article-149.md, or output/article-149.rejected.md with the reasons
 python article.py --website ~/PhpstormProjects/pensieriincodice-website --import-text 149 --text /tmp/pic149/article.md --model claude-sonnet-5-5
 ```
 
-An existing `output/article-NNN.md` is never overwritten by an import. Once the imported articles of a batch are committed and pushed, run **Generate Episode Article** by hand with `publish` set to their numbers (`149,148,147`): it skips generation and opens one PR on the website with all of them.
+An existing `output/article-NNN.md` is never overwritten by an import. Once the imported articles are committed and pushed, run **Generate Episode Article** by hand with `publish` set to their numbers (`151` or `149,148,147`): it opens one PR on the website with `content/blog/episodio-NNN.md` for each; the PR is merged by hand.
 
 ### Manual updates (`manual/`)
 
@@ -113,7 +107,6 @@ The optional `host:` prefix supports `codeberg` (public repos only, no token nee
 | `GEMINI_API_KEY` | Secret | Google Gemini API key |
 | `ANTHROPIC_API_KEY` | Secret | Anthropic API key, used as fallback when Gemini fails |
 | `AI_PROVIDER` | Variable | Optional, comma-separated provider order (default `google,anthropic`) |
-| `ARTICLE_AI_PROVIDER` | Variable | Optional, provider order for the episode articles only (default: `AI_PROVIDER`) |
 | `TELEGRAM_BOT_TOKEN` | Secret | Telegram bot token |
 | `TELEGRAM_CHAT_ID` | Variable | Telegram chat/channel ID where the recap is published |
 

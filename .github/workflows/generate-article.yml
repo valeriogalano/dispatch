@@ -1,25 +1,13 @@
 name: Generate Episode Article
 
 on:
-  # sent by pensieriincodice-website when an episode script lands:
-  # {"event_type": "episode-script", "client_payload": {"episode": 151}}
-  repository_dispatch:
-    types: [episode-script]
   workflow_dispatch:
     inputs:
-      episodes:
-        description: "Episode numbers, comma-separated; leave empty for the missing ones"
-        required: false
-        default: ""
       publish:
-        description: "Only publish: episode numbers whose articles are already in output/, comma-separated (one PR, no AI)"
-        required: false
-        default: ""
-  # before the website's 04:00 UTC build, catching any dispatch that went missing
-  schedule:
-    - cron: "0 3 * * *"
+        description: "Episode numbers whose articles are already committed in output/, comma-separated (one PR)"
+        required: true
 
-# a dispatch and the daily run must not generate, or publish, the same article twice
+# two runs must not publish the same article twice
 concurrency:
   group: episode-article
 
@@ -35,12 +23,6 @@ jobs:
         with:
           ref: main
 
-      # same as _generate-recap.yml: the PAT stays scoped to this one command
-      - name: Fetch the skills submodule
-        run: |
-          git -c url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf="https://github.com/" \
-              submodule update --init --remote --depth 1
-
       - name: Checkout pensieriincodice-website
         uses: actions/checkout@v5
         with:
@@ -48,56 +30,10 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           path: website
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-
-      - name: Create virtualenv and install dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
-
-      # article.py skips any episode that already has an article, rejected ones
-      # included: a re-run never pays for the AI twice
-      - name: Run article.py
-        id: generate
-        if: ${{ !github.event.inputs.publish }}
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          AI_PROVIDER: ${{ vars.ARTICLE_AI_PROVIDER || vars.AI_PROVIDER || 'google,anthropic' }}
-          EPISODES: ${{ github.event.client_payload.episode || github.event.inputs.episodes }}
-        run: |
-          # ponytail: one article per scheduled run, so the backlog of old episodes
-          # does not land in a single night; raise the limit to backfill faster
-          ARGS="--missing --limit 1"
-          [ -n "$EPISODES" ] && ARGS=$(echo "$EPISODES" | tr ',' ' ')
-          # a rejected article must not stop the commit below: it is kept for review
-          .venv/bin/python article.py --website website $ARGS || echo "rejected=yes" >> "$GITHUB_OUTPUT"
-
-      - name: Commit article files
-        id: commit
-        if: ${{ !github.event.inputs.publish }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          # output/ as a whole: a glob matching nothing would fail the step
-          git add output/
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          echo "new=$(git diff --cached --name-only --diff-filter=A -- 'output/article-*.md' | grep -v rejected | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
-          git commit -m "chore: add episode articles $(date -u '+%Y-%m-%d')"
-          git pull --rebase --no-recurse-submodules
-          git push
-
-      # articles written in a Claude Code session and imported with
-      # `article.py --import-text` are already committed: they only need the PR
+      # the articles are written in a Claude Code session and imported with
+      # `article.py --import-text`: they are already committed, they only need the PR
       - name: List the articles to publish
         id: publish
-        if: ${{ github.event.inputs.publish }}
         env:
           PUBLISH: ${{ github.event.inputs.publish }}
         run: |
@@ -114,10 +50,9 @@ jobs:
 
       # the PR is opened, not merged: an article speaks with Valerio's voice
       - name: Open a PR on the website with the new articles
-        if: ${{ steps.commit.outputs.new != '' || steps.publish.outputs.new != '' }}
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          NEW: ${{ steps.commit.outputs.new || steps.publish.outputs.new }}
+          NEW: ${{ steps.publish.outputs.new }}
         run: |
           REPO="valeriogalano/pensieriincodice-website"
           NUMBERS=""
@@ -155,7 +90,7 @@ jobs:
             gh pr create \
               --repo "$REPO" \
               --title "Episode article ${NUMBERS}" \
-              --body "Article adapted from the script of episode ${NUMBERS}, generated automatically by Dispatch." \
+              --body "Article adapted from the script of episode ${NUMBERS}, written in a Claude Code session." \
               --base main \
               --head "$BRANCH" || true
             PR_URL=$(find_pr)
@@ -167,11 +102,3 @@ jobs:
             exit 1
           fi
           echo "[info] opened ${PR_URL}"
-
-      # the article that failed its checks is committed for review, and the run
-      # goes red so it does not pass unnoticed
-      - name: Report rejected articles
-        if: ${{ steps.generate.outputs.rejected == 'yes' }}
-        run: |
-          echo "[error] some articles failed their checks, see output/article-*.rejected.md" >&2
-          exit 1
