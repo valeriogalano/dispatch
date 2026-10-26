@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Adapt the script of a podcast episode into a blog article, written by Engram."""
+"""Adapt the script of a podcast episode into a blog article, written by Engram.
+
+The text is written in a Claude Code session: `--export-prompt` hands it the messages,
+`--import-text` checks and saves what it wrote."""
 
 import argparse
 import json
@@ -9,7 +12,7 @@ from pathlib import Path
 
 import yaml
 
-from recap import Truncated, call_ai, drop_invented_links, engram_system, strip_trailer
+from recap import drop_invented_links, engram_system, strip_trailer
 
 SYSTEM = engram_system("articolo-episodio")
 
@@ -23,10 +26,6 @@ Script:
 
 {script}
 """
-
-# the first episode after the pipeline went live: the 82 older ones are a backfill
-# run by hand, not something the nightly job should work through
-FIRST_NEW_EPISODE = 151
 
 # measured on the script without its listening-only sections (see `without_listening_sections`):
 # the articles of 148, 149 and 151 come out at 0.94, 0.99 and 1.00 of it
@@ -161,21 +160,9 @@ def save_article(out_dir: Path, number: int, episode: dict, script: str, allowed
     return True
 
 
-def generate_article(website: Path, number: int, out_dir: Path) -> bool:
-    episode, script, allowed, user = prepare(website, number)
-    print(f"Episode {number}: {episode['title']}", file=sys.stderr)
-    try:
-        model, text = call_ai(SYSTEM, user)
-        cut = []
-    except Truncated as e:
-        # 2026-10-20: the 149 article ended mid-word and still passed the length check
-        model, text, cut = e.model, e.text, [str(e)]
-    return save_article(out_dir, number, episode, script, allowed, model, text, cut)
-
-
 def export_prompt(website: Path, number: int, out: Path) -> None:
-    """The exact system and user messages call_ai would send, for a text written
-    elsewhere (a Claude Code session) and brought back with import_text."""
+    """The system and user messages for a session to write the article from,
+    brought back with import_text."""
     _, _, _, user = prepare(website, number)
     out.mkdir(parents=True, exist_ok=True)
     (out / "system.md").write_text(SYSTEM, encoding="utf-8")
@@ -184,7 +171,7 @@ def export_prompt(website: Path, number: int, out: Path) -> None:
 
 
 def import_text(website: Path, number: int, text_path: Path, model: str, out_dir: Path) -> bool:
-    """A text written elsewhere goes through everything a model answer goes through."""
+    """Clean, check and save a text written in a session."""
     if (out_dir / f"article-{number}.md").exists():
         print(f"[skip] article-{number}.md already exists", file=sys.stderr)
         return True
@@ -193,25 +180,9 @@ def import_text(website: Path, number: int, text_path: Path, model: str, out_dir
                         text_path.read_text(encoding="utf-8"))
 
 
-def missing_episodes(website: Path, out_dir: Path, since: int = FIRST_NEW_EPISODE) -> list[int]:
-    """Episodes with a script and a page but no article yet, rejected ones included,
-    newest first: the episode that just came out matters more than the backlog.
-    The older scripts are .json transcripts without punctuation: only .yml count."""
-    numbers = sorted((int(p.stem[3:]) for p in (website / "data" / "scripts").glob("PIC*.yml")), reverse=True)
-    return [n for n in numbers
-            if n >= since
-            and (website / "content" / "podcast" / f"{n}.md").exists()
-            and not list(out_dir.glob(f"article-{n}.*md"))]
-
-
 def main():
     parser = argparse.ArgumentParser(description="Adapt podcast episode scripts into blog articles.")
-    parser.add_argument("episodes", nargs="*", type=int, help="Episode numbers (default: --missing)")
     parser.add_argument("--website", required=True, help="Checkout of pensieriincodice-website")
-    parser.add_argument("--missing", action="store_true", help="Every episode with a script and no article")
-    parser.add_argument("--limit", type=int, default=0, help="With --missing, at most this many (0: no limit)")
-    parser.add_argument("--since", type=int, default=FIRST_NEW_EPISODE,
-                        help=f"With --missing, only episodes from this number on (default: {FIRST_NEW_EPISODE})")
     parser.add_argument("--output-dir", default="output", help="Output directory (default: output)")
     parser.add_argument("--export-prompt", type=int, metavar="N",
                         help="Write the system and user messages for episode N to --out, call no model")
@@ -237,17 +208,7 @@ def main():
             parser.error("--import-text needs --text and --model")
         sys.exit(0 if import_text(website, args.import_text, Path(args.text), args.model, out_dir) else 1)
 
-    episodes = args.episodes
-    if args.missing or not episodes:
-        episodes = missing_episodes(website, out_dir, args.since)[:args.limit or None]
-
-    ok = True
-    for number in episodes:
-        if (out_dir / f"article-{number}.md").exists():
-            print(f"[skip] article-{number}.md already generated", file=sys.stderr)
-            continue
-        ok = generate_article(website, number, out_dir) and ok
-    sys.exit(0 if ok else 1)
+    parser.error("nothing to do: use --export-prompt or --import-text")
 
 
 if __name__ == "__main__":
