@@ -7,7 +7,7 @@ import article
 
 SCRIPT = '''text: "
 
-## Introduzione
+## Il tema
 
 ###### Nox
 Benvenuto Valerio, parliamo di \\"Runtime by Night\\".
@@ -18,6 +18,8 @@ Sigla.
 
 ###### Valerio
 Grazie Nox, ne parlo volentieri insieme a Edoardo.
+
+## Conclusione
 
 Grazie a tutti, ci sentiamo alla prossima puntata.
 "
@@ -54,9 +56,10 @@ class ScriptTests(unittest.TestCase):
             script = article.clean_script(article.read_script(website(tmp) / "data" / "scripts" / "PIC150.yml"))
 
         self.assertEqual(
-            "## Introduzione\n\n"
+            "## Il tema\n\n"
             '**Nox:** Benvenuto Valerio, parliamo di "Runtime by Night".\n\n'
             "**Valerio:** Grazie Nox, ne parlo volentieri insieme a Edoardo.\n\n"
+            "## Conclusione\n\n"
             "Grazie a tutti, ci sentiamo alla prossima puntata.",
             script,
         )
@@ -65,14 +68,20 @@ class ScriptTests(unittest.TestCase):
 class CheckTests(unittest.TestCase):
     sentence = "Ho parlato con Edoardo di Runtime by Night. "
     script = sentence * 10
-    # the role drops what belongs to listening: 60-80% of the script
-    faithful = sentence * 7
+    # the role keeps everything that is not listening-only: about the whole script
+    faithful = sentence * 10
 
     def test_a_faithful_article_passes(self):
         self.assertEqual([], article.check(self.faithful, self.script, self.script))
 
+    def test_the_listening_sections_do_not_count_towards_the_length(self):
+        # 148 words of script, 40 of them in sections the role drops whole
+        script = "## Introduzione\n" + "ciao " * 20 + "\n## Tema\n" + "parlo " * 18 + "\n## Conclusione\n" + "grazie " * 20
+        self.assertEqual(20, len(article.without_listening_sections(script).split()))
+        self.assertEqual([], article.check("parlo " * 18, script, script))
+
     def test_each_check_blocks_on_its_own(self):
-        for text in (self.sentence * 4, self.script):
+        for text in (self.sentence * 4, self.sentence * 12):
             with self.subTest(words=len(text.split())):
                 self.assertIn("length", article.check(text, self.script, self.script)[0])
 
@@ -90,7 +99,7 @@ class CheckTests(unittest.TestCase):
 
 class GenerateTests(unittest.TestCase):
     body = (
-        "## Introduzione\n\n"
+        "## Il tema\n\n"
         "**Nox:** Benvenuto Valerio, parliamo di [Runtime by Night](https://runtimeradio.com/podcast/runtime-by-night).\n\n"
         "**Valerio:** Grazie Nox, ne parlo volentieri insieme a Edoardo.\n\n"
         "_Generato con gpt-4o_"
@@ -109,7 +118,7 @@ class GenerateTests(unittest.TestCase):
                 "date: 2026-06-21T04:00:00+02:00\n"
                 'tags: ["podcasting", "intelligenza artificiale"]\n'
                 "type: blog\nauthor: Valerio Galano\nepisode: 150\n"
-                "curated_by: Engram\ngenerated_with: claude-sonnet-5-5\n---\n\n## Introduzione"
+                "curated_by: Engram\ngenerated_with: claude-sonnet-5-5\n---\n\n## Il tema"
             ))
             # the site's template looks the episode page up by number: a quoted
             # "150" finds nothing and the link under the title disappears
