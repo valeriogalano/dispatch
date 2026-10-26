@@ -141,12 +141,12 @@ def prepare(website: Path, number: int) -> tuple[dict, str, str, str]:
 
 
 def save_article(out_dir: Path, number: int, episode: dict, script: str, allowed: str,
-                 model: str, text: str, problems: list[str] = ()) -> bool:
+                 model: str, text: str) -> bool:
     """Write output/article-NNN.md, or output/article-NNN.rejected.md with the
     reasons when a check fails. Either file means the text was already paid for."""
     body = drop_invented_links(strip_trailer(text), allowed)
 
-    if problems := list(problems) + check(body, script, allowed):
+    if problems := check(body, script, allowed):
         path = out_dir / f"article-{number}.rejected.md"
         path.write_text("\n".join(f"<!-- {p} -->" for p in problems) + f"\n\n{body}\n", encoding="utf-8")
         print(f"[rejected] {path}: " + "; ".join(problems), file=sys.stderr)
